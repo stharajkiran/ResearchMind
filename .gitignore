@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# Data and artifacts — tracked by DVC, not git
+data/raw/
+data/processed/
+artifacts/
+
+# MLflow
+mlruns/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# DVC cache
+.dvc/cache/
+.dvc/tmp/
