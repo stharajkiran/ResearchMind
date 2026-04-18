@@ -31,3 +31,5 @@ Thumbs.db
 .dvc/tmp/
 
 notebooks
+logs
+mlflow.db

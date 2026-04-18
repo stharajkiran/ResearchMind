@@ -1,0 +1,422 @@
+[
+  {
+    "query": "improving image classification with small training sets using nonlinear dynamical transformations before softmax layer",
+    "relevant_paper_ids": [
+      "2604.14645v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "chaotic maps feature transformation CNN limited data CIFAR MNIST",
+    "relevant_paper_ids": [
+      "2604.14645v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "statistical optimality properties of probabilistic deep learning models under squared error loss",
+    "relevant_paper_ids": [
+      "2604.04673v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Bayesian neural networks minimax admissibility ReLU decision theory",
+    "relevant_paper_ids": [
+      "2604.04673v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "how do language models handle facts that change over time and what methods best keep them current",
+    "relevant_paper_ids": [
+      "2604.05096v2"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Chronos time-aware retrieval LLM continuous knowledge drift benchmark",
+    "relevant_paper_ids": [
+      "2604.05096v2"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "browser extension for literature screening in systematic reviews without requiring a server or programming knowledge",
+    "relevant_paper_ids": [
+      "2604.08602v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "TiAb Review Plugin Gemini active learning systematic review screening",
+    "relevant_paper_ids": [
+      "2604.08602v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "hybrid surrogate model combining neural networks and finite difference for fluid dynamics simulation without retraining across parameter changes",
+    "relevant_paper_ids": [
+      "2604.02663v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "parameterized physics-informed neural networks coupled FDM thermal-hydraulic MELCOR",
+    "relevant_paper_ids": [
+      "2604.02663v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "estimating unmeasured thermal and hydraulic states in sparse district heating systems using graph-based deep learning",
+    "relevant_paper_ids": [
+      "2604.10166v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "heterogeneous spatial-temporal GNN virtual sensing district heating",
+    "relevant_paper_ids": [
+      "2604.10166v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "autonomous AI agents performing structural analysis from photos without human intervention",
+    "relevant_paper_ids": [
+      "2604.06788v2"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "multi-agent LLM finite element analysis engineering workflow automation",
+    "relevant_paper_ids": [
+      "2604.06788v2"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "energy-efficient activity recognition on wearable devices using neuromorphic computing with early exit",
+    "relevant_paper_ids": [
+      "2604.10458v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "PAS-Net spiking neural network IMU human activity recognition",
+    "relevant_paper_ids": [
+      "2604.10458v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "reconstructing high-dimensional particle beam distributions from limited 2D measurements using generative models",
+    "relevant_paper_ids": [
+      "2604.03885v2"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "PhaseFlow4D latent diffusion 4D phase space beam reconstruction FRIB",
+    "relevant_paper_ids": [
+      "2604.03885v2"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "improving exploration diversity in language model reinforcement learning without sacrificing task performance",
+    "relevant_paper_ids": [
+      "2604.11510v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Policy Split dual-mode entropy regularization LLM reinforcement learning",
+    "relevant_paper_ids": [
+      "2604.11510v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "benchmark for evaluating information leakage in collaborative AI agent systems serving users across social platforms",
+    "relevant_paper_ids": [
+      "2604.01487v2"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "AgentSocialBench privacy risks LLM agentic social networks",
+    "relevant_paper_ids": [
+      "2604.01487v2"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "combining reinforcement learning with automated planning by learning action preconditions and effects from environment interactions",
+    "relevant_paper_ids": [
+      "2604.08685v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "RAMP hybrid deep reinforcement learning numeric action model learning",
+    "relevant_paper_ids": [
+      "2604.08685v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "synthetic multivariate time series generation tool with controllable inter-variable dependencies and fine-grained anomaly ground truth labels",
+    "relevant_paper_ids": [
+      "2604.14221v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Fun-TSG customizable time series generator variable-level anomaly labeling",
+    "relevant_paper_ids": [
+      "2604.14221v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "converting deep neural networks into linear approximations using operator theory and model compression techniques for hardware-friendly deployment",
+    "relevant_paper_ids": [
+      "2604.06732v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Koopman operator knowledge distillation linearized neural network classification",
+    "relevant_paper_ids": [
+      "2604.06732v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "comparing document parsing strategies and text segmentation approaches for question answering over financial reports using retrieval-augmented systems",
+    "relevant_paper_ids": [
+      "2604.12047v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "RAG pipeline PDF parsing chunking strategies financial question answering evaluation",
+    "relevant_paper_ids": [
+      "2604.12047v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "automated end-to-end machine learning pipeline using LLM agents for competitive data science tasks",
+    "relevant_paper_ids": [
+      "2604.14455v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "AIBuildAI hierarchical agent MLE-Bench Kaggle automation",
+    "relevant_paper_ids": [
+      "2604.14455v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "using visually similar unicode characters to fool authorship identification systems",
+    "relevant_paper_ids": [
+      "2604.10271v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "homoglyph substitution adversarial stylometry authorship obfuscation",
+    "relevant_paper_ids": [
+      "2604.10271v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "fine-tuning language models for drug-like molecule editing while preserving core chemical structure",
+    "relevant_paper_ids": [
+      "2604.12350v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "scaffold-conditioned preference optimization molecular LLM drug discovery",
+    "relevant_paper_ids": [
+      "2604.12350v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "autonomous agent system for hypothesis-driven analysis and narrative generation over structured tabular data",
+    "relevant_paper_ids": [
+      "2604.06474v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "DataSTORM LLM agent exploratory data analysis InsightBench",
+    "relevant_paper_ids": [
+      "2604.06474v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "decentralized ledger enforcing human approval requirements in multi-drone disaster response coordination",
+    "relevant_paper_ids": [
+      "2604.04265v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "blockchain smart contract human oversight UAV wildfire detection POMDP",
+    "relevant_paper_ids": [
+      "2604.04265v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "detecting driver drowsiness from video using lightweight graph-based facial analysis with state space models",
+    "relevant_paper_ids": [
+      "2604.08435v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "HST-HGN hypergraph Bi-Mamba driver fatigue assessment",
+    "relevant_paper_ids": [
+      "2604.08435v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "classifying structural changes in string instruments using machine learning on 3D scan data",
+    "relevant_paper_ids": [
+      "2604.02446v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "SVM decision trees violin photogrammetric mesh width detection",
+    "relevant_paper_ids": [
+      "2604.02446v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "neural network approach to finding multiple equilibrium solutions of nonlinear physics equations",
+    "relevant_paper_ids": [
+      "2603.27936v2"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Deflation-PINNs multiple solutions Landau-de Gennes liquid crystals",
+    "relevant_paper_ids": [
+      "2603.27936v2"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "preventing data leakage in automated model training pipelines through proper cross-validation preprocessing",
+    "relevant_paper_ids": [
+      "2604.05225v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "fastml R package guarded resampling preprocessing leakage AutoML",
+    "relevant_paper_ids": [
+      "2604.05225v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "conversational AI system for iterative troubleshooting that tracks diagnostic state across multiple turns",
+    "relevant_paper_ids": [
+      "2604.05350v2"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "DQA diagnostic question answering enterprise IT support RAG",
+    "relevant_paper_ids": [
+      "2604.05350v2"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "how do skills emerge in a predictable order during neural network pretraining",
+    "relevant_paper_ids": [
+      "2604.08510v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "implicit curriculum hypothesis LLM capability emergence pretraining order",
+    "relevant_paper_ids": [
+      "2604.08510v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "fully automated system that designs and runs medical imaging experiments without human input",
+    "relevant_paper_ids": [
+      "2604.10696v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Camyla autonomous research agent medical image segmentation benchmark",
+    "relevant_paper_ids": [
+      "2604.10696v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "evaluating object detection models for autonomous driving with safety-critical error weighting",
+    "relevant_paper_ids": [
+      "2604.03325v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "EC-IoU safety-aware loss function 3D object detection autonomous vehicles",
+    "relevant_paper_ids": [
+      "2604.03325v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "simulating infectious disease spread on private contact networks while preserving individual anonymity",
+    "relevant_paper_ids": [
+      "2604.07493v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "differential privacy ERGM disease transmission contact network simulation",
+    "relevant_paper_ids": [
+      "2604.07493v1"
+    ],
+    "category": "technical"
+  },
+  {
+    "query": "training a small local model to browse websites by learning from a large proprietary model",
+    "relevant_paper_ids": [
+      "2604.07776v1"
+    ],
+    "category": "semantic"
+  },
+  {
+    "query": "Agent-as-Annotators web agent distillation WebArena open-weight model",
+    "relevant_paper_ids": [
+      "2604.07776v1"
+    ],
+    "category": "technical"
+  }
+]
