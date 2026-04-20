@@ -5,38 +5,34 @@ import logging
 from datetime import datetime
 import numpy as np
 import mlflow
-from researchmind.embedding.models import (
-    BGEEncoder,
-    BaseResearchEncoder,
-    MPNetEncoder,
-    SPECTER2Encoder,
-)
+from researchmind.embedding.models import BGEEncoder, BaseResearchEncoder
+from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.utils.logging import configure_logging
 
 from dotenv import load_dotenv
 load_dotenv()
 
-
 def run_benchmark(
-    encoder: BaseResearchEncoder,
-    model_name: str,
-    papers: list[dict],
+    faissIndex: FaissIndexBuilder,
+    index_name: str,
     queries: list[dict],
+    query_embeddings: np.ndarray,
+    corpus_ids: list[str],
     logger: logging.Logger,
     logs_dir: Path | None = None,
-    experiment_name: str = "embedding_benchmark",
+    experiment_name: str = "faiss_benchmark",
 ) -> dict:
     mlflow.set_experiment(experiment_name)
-    with mlflow.start_run(run_name=model_name):
+    with mlflow.start_run(run_name=index_name):
         run_id = mlflow.active_run().info.run_id
         per_run_handler: logging.FileHandler | None = None
         per_run_log_path: Path | None = None
 
         if logs_dir is not None:
             logs_dir.mkdir(parents=True, exist_ok=True)
-            safe_model_name = model_name.lower().replace(" ", "_")
+            safe_index_name = index_name.lower().replace(" ", "_")
             # Keep one log file per MLflow run so logs are traceable by run_id.
-            per_run_log_path = logs_dir / f"{safe_model_name}_{run_id}.log"
+            per_run_log_path = logs_dir / f"{safe_index_name}_{run_id}.log"
             per_run_handler = logging.FileHandler(per_run_log_path, encoding="utf-8")
             per_run_handler.setFormatter(
                 logging.Formatter(
@@ -47,59 +43,52 @@ def run_benchmark(
                 logger.addHandler(per_run_handler)
 
         try:
-            logger.info("Started benchmark run for %s (run_id=%s)", model_name, run_id)
+            logger.info("Started benchmark run for %s (run_id=%s)", index_name, run_id)
 
-            # match paper IDs to abstracts for easy retrieval during evaluation
-            papers_dict = {p["paper_id"]: p for p in papers}
+            mlflow.log_param("index_name", index_name)
+            mlflow.log_param("corpus_size", len(corpus_ids))
 
-            # Embed all abstracts
-            corpus_ids = list(papers_dict.keys())
-            corpus_texts = [papers_dict[pid]["abstract"] for pid in corpus_ids]
-
+            # Build the FAISS index and measure build time
             start = time()
-            corpus_embeddings = encoder.encode(corpus_texts)
-            elapsed = time() - start
-            throughput = len(corpus_texts) / max(elapsed, 1e-9)
-
-            mlflow.log_param("model_name", model_name)
-            mlflow.log_param("corpus_size", len(papers))
-            mlflow.log_param("vector_dimension", int(corpus_embeddings.shape[1]))
+            faissIndex.build_index(corpus_embeddings, corpus_ids, index_type=index_name)
+            build_time = time() - start
 
             latencies = []
             recalls = []
-            logger.info("Running %d queries...", len(queries))
-            for q in queries:
+            logger.info("Running %d queries and %d query embeddings...", len(queries), len(query_embeddings))
+            for q, query_embedding in zip(queries, query_embeddings):
                 start_time = time()
-                query_embedding = encoder.encode([q["query"]])
-                scores = corpus_embeddings @ query_embedding.T
-                top10_indices = np.argsort(scores.flatten())[-10:][::-1]
-                top10_ids = [corpus_ids[i] for i in top10_indices]
+                top10_ids = faissIndex.search(query_embedding.reshape(1, -1), k=10)
                 latencies.append(time() - start_time)
+                # Check if any of the relevant paper IDs are in the top 10 results
                 found = any(pid in top10_ids for pid in q["relevant_paper_ids"])
                 recalls.append(1.0 if found else 0.0)
 
             mean_recall = float(np.mean(recalls))
+            p50_latency_ms = float(np.percentile(latencies, 50) * 1000)
             p95_latency_ms = float(np.percentile(latencies, 95) * 1000)
             metrics = {
                 "recall_10": mean_recall,
+                "p50_latency": p50_latency_ms,
                 "p95_latency": p95_latency_ms,
-                "throughput": throughput,
+                "build_time": build_time,
             }
 
             logger.info(
-                "Benchmark results - Recall_10: %.2f, P95 Latency: %.2fms, Throughput: %.2f docs/sec",
+                "Benchmark results - Recall_10: %.2f, P50 Latency: %.2fms, P95 Latency: %.2fms, Build Time: %.2fs",
                 mean_recall,
+                p50_latency_ms,
                 p95_latency_ms,
-                throughput,
+                build_time,
             )
             mlflow.log_metrics(metrics)
-            mlflow.set_tag("model_name", model_name)
+            mlflow.set_tag("index_name", index_name)
             mlflow.set_tag("run_log_artifact", "logs")
             return metrics
 
         except Exception:
             # Log full traceback so it is captured in both the session and per-run log files.
-            logger.exception("Benchmark failed for model '%s'", model_name)
+            logger.exception("Benchmark failed for index '%s'", index_name)
             raise
         finally:
             # Ensure file handlers are always released, even if benchmarking fails.
@@ -113,7 +102,7 @@ def run_benchmark(
 
 if __name__ == "__main__":
     project_root = Path(__file__).resolve().parents[3]
-    logs_dir = project_root / "logs" / "embedding_benchmark"
+    logs_dir = project_root / "logs" / "faiss_benchmark"
     # Session log captures cross-model orchestration messages in one place.
     session_log_path = (
         logs_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
@@ -133,45 +122,39 @@ if __name__ == "__main__":
         queries = json.load(f)
         logger.info("Loaded %d queries from %s", len(queries), queries_path)
 
-    logger.info("Initializing models...")
-    # Run benchmark for all three models
-    specter_encoder = SPECTER2Encoder()
-    mpnet_encoder = MPNetEncoder()
-    bge_encoder = BGEEncoder()
-    logger.info("Models initialized successfully.")
+    logger.info("Initializing encoder...")
+    encoder = BGEEncoder()  
+    
+    # we need corpus_embeddings to build the index, and corpus_ids for mapping back search results to paper IDs
+    papers_dict = {p["paper_id"]: p for p in papers}
+    corpus_ids = list(papers_dict.keys())
+    corpus_texts = [papers_dict[pid]["abstract"] for pid in corpus_ids]
+    corpus_embeddings = encoder.encode(corpus_texts)
+    query_embeddings = encoder.encode([q["query"] for q in queries])
+    logger.info("Encoder initialized successfully.")
 
-    # Implement run_benchmark and call it for each model, then print results in a table format
+    # Initialize FaissIndexBuilder with the correct dimension from the encoder
+    faissIndex = FaissIndexBuilder(
+        dimension=encoder.dim
+    ) 
+    # Implement run_benchmark and call it for each index type
     results = []
-    for model, model_name in [
-        (specter_encoder, "SPECTER2"),
-        (mpnet_encoder, "MPNet"),
-        (bge_encoder, "BGE"),
+    for index_name in [
+        "Flat",
+        "IVF100",
+        "HNSW32",
     ]:
-        logger.info("Running benchmark for %s...", model_name)
+        logger.info("Running benchmark for %s...", index_name)
+        # build the index — measure build time here
+
         metrics = run_benchmark(
-            model,
-            model_name,
-            papers,
+            faissIndex,
+            index_name,
             queries,
+            query_embeddings,
+            corpus_ids,
             logger=logger,
             logs_dir=logs_dir,
         )
-        logger.info("Completed benchmark for %s. Metrics: %s", model_name, metrics)
-        results.append((model_name, metrics))
-
-    # Print results table
-    logger.info(
-        "%-15s %-10s %-12s %-12s", "Model", "Recall_10", "Throughput", "P95 Latency"
-    )
-    for model_name, metrics in results:
-        logger.info(
-            "%-15s %-10.2f %-12.2f %-12.2f",
-            model_name,
-            metrics["recall_10"],
-            metrics["throughput"],
-            metrics["p95_latency"],
-        )
-
-    logger.info(
-        "All benchmarks completed. Session logs written to %s", session_log_path
-    )
+        logger.info("Completed benchmark for %s. Metrics: %s", index_name, metrics)
+        results.append((index_name, metrics))

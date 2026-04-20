@@ -8,7 +8,7 @@ build/
 
 # Environment
 .env
-.env.*
+
 
 # Data and artifacts — tracked by DVC, not git
 data/raw/
@@ -33,3 +33,6 @@ Thumbs.db
 notebooks
 logs
 mlflow.db
+
+
+README.md
