@@ -1,5 +1,9 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from adapters import AutoAdapterModel
+from transformers import AutoTokenizer
+import torch
+import numpy as np
 
 
 class BaseResearchEncoder:
@@ -7,7 +11,8 @@ class BaseResearchEncoder:
 
     def __init__(self, model_name: str):
         print(f"Loading model: {model_name}...")
-        self.model = SentenceTransformer(model_name)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = SentenceTransformer(model_name, device=self.device)
         # Automatically detect the dimension from the loaded model
         self.dim = self.model.get_embedding_dimension()
         self.model_name = model_name
@@ -22,16 +27,6 @@ class BaseResearchEncoder:
         )
 
 
-class SPECTER2Encoder(BaseResearchEncoder):
-    """The domain-adapted expert for scientific citations, with query/document specialization."""
-
-    def __init__(self):
-        # Load the document model via the base class (sets self.model, self.dim, self.model_name).
-        super().__init__("allenai/specter2_base")
-        # Load a separate query model so both are ready without adapter-swapping at encode time.
-
-
-
 class MPNetEncoder(BaseResearchEncoder):
     """A strong general-purpose encoder that performs well across various research domains."""
 
@@ -44,3 +39,54 @@ class BGEEncoder(BaseResearchEncoder):
 
     def __init__(self):
         super().__init__("BAAI/bge-small-en-v1.5")
+
+
+class SPECTER2Encoder:
+    def __init__(self):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model_name = "allenai/specter2_base"
+        self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter2_base")
+        self.model = AutoAdapterModel.from_pretrained("allenai/specter2_base")
+        # Encoding corpus documents — use proximity
+        self.model.load_adapter(
+            "allenai/specter2", source="hf", load_as="proximity", set_active=True
+        )
+
+        # Encoding user queries — use adhoc_query
+        self.model.load_adapter(
+            "allenai/specter2_adhoc_query", source="hf", load_as="adhoc_query"
+        )
+        self.model.set_active_adapters("adhoc_query")
+        self.model.to(self.device)
+        self.model.eval()
+
+    def encode_corpus(self, papers: list[dict], batch_size: int = 32) -> np.ndarray:
+        self.model.set_active_adapters("proximity")
+        # Documents use title + sep + abstract
+        texts = [p["title"] + self.tokenizer.sep_token + p["abstract"] for p in papers]
+        return self._encode(texts, batch_size)
+
+    def encode_queries(self, queries: list[str], batch_size: int = 32) -> np.ndarray:
+        self.model.set_active_adapters("adhoc_query")
+        # Queries are passed as-is — no title prefix
+        return self._encode(queries, batch_size)
+
+    def _encode(self, texts: list[str], batch_size: int) -> np.ndarray:
+        all_embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            inputs = self.tokenizer(
+                batch,
+                return_tensors="pt",
+                max_length=512,
+                truncation=True,
+                padding=True,
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+            embeddings = outputs.last_hidden_state[:, 0, :]
+            # Normalize to unit length — matches SentenceTransformer behavior
+            embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+            all_embeddings.append(embeddings.cpu().numpy())
+        return np.vstack(all_embeddings)

@@ -5,29 +5,29 @@ stages:
     deps:
     - path: src/researchmind/ingestion/
       hash: md5
-      md5: 0913af4e9330662049a1d793b9da2329.dir
-      size: 9647
-      nfiles: 9
+      md5: b4afd1384766498f88b2d95cd3c93564.dir
+      size: 42800
+      nfiles: 13
     outs:
     - path: data/processed/papers.jsonl
       hash: md5
-      md5: f70949ca39e3de0e79c4f9cbb94c46e5
-      size: 9205259
+      md5: 710f808c2965fb862f8074d06f363b72
+      size: 14198168
   build_indexes:
     cmd: python -m scripts.build_indexes
     deps:
     - path: data/processed/papers.jsonl
       hash: md5
-      md5: f70949ca39e3de0e79c4f9cbb94c46e5
-      size: 9205259
+      md5: 710f808c2965fb862f8074d06f363b72
+      size: 14198168
     - path: scripts/build_indexes.py
       hash: md5
-      md5: 4837f33f264ea375a88d9a2a68a32184
-      size: 3624
+      md5: dcd6e33c1e651ee7892257639c3df05d
+      size: 3539
     - path: src/researchmind/embedding/
       hash: md5
-      md5: 525a43956c9d36da055bd831ccae3ff8.dir
-      size: 5501
+      md5: 459a8861fcd16040f83ee585afdd0453.dir
+      size: 11692
       nfiles: 4
     - path: src/researchmind/retrieval/
       hash: md5
@@ -37,6 +37,6 @@ stages:
     outs:
     - path: artifacts/indexes
       hash: md5
-      md5: b8bada971ca5d8b69b35dc1bb95838ff.dir
-      size: 14470455
-      nfiles: 8
+      md5: 452e5ea92240b17121c9b212265007b0.dir
+      size: 87938810
+      nfiles: 12

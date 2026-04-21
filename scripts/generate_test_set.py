@@ -37,13 +37,17 @@ def generate_queries(batch: List[Dict]) -> str:
     1. SEMANTIC query:
     - Describe the problem or methodology without using unique keywords or the title. 
     - DO NOT reuse phrases directly from the abstract
-    - DO NOT include model names or paper titles
-    - Should be realistic and slightly ambiguous
+    - - Describe the research problem or goal in plain language
+    - Slightly ambiguous — could match multiple papers
+    - No model names, author names, or dataset names
+    - 10-20 words
+    - Difficulty: HARD (requires understanding the concept, not matching keywords)
 
     2. TECHNICAL query:
-    - Use 1–2 key identifiers (model name, author, or method)
-    - Keep it concise (max 8–10 words)
-    - Should resemble a real search query, not a keyword list
+    - Include 1-2 specific identifiers: model name, author surname, dataset, or method name
+    - Concise: 6-10 words maximum
+    - Resembles a real search bar query
+    - Difficulty: MEDIUM (keyword match should partially work, semantic should do better)
 
     OUTPUT FORMAT: A JSON list of objects only. No conversational text.
     [

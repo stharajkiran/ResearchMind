@@ -6,7 +6,7 @@ from datetime import datetime
 import numpy as np
 
 import mlflow
-from researchmind.embedding.models import BGEEncoder, BaseResearchEncoder
+from researchmind.embedding.models import MPNetEncoder
 from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.utils.logging import configure_logging
 
@@ -37,7 +37,8 @@ def run_benchmark(
             logs_dir.mkdir(parents=True, exist_ok=True)
             safe_index_name = index_name.lower().replace(" ", "_")
             # Keep one log file per MLflow run so logs are traceable by run_id.
-            per_run_log_path = logs_dir / f"{safe_index_name}_{run_id}.log"
+            #f"{datetime.now().strftime('%Y%m%d_%H%M%S')}
+            per_run_log_path = logs_dir / f"{safe_index_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
             per_run_handler = logging.FileHandler(per_run_log_path, encoding="utf-8")
             per_run_handler.setFormatter(
                 logging.Formatter(
@@ -111,7 +112,9 @@ def run_benchmark(
 
 if __name__ == "__main__":
     project_root = Path(__file__).resolve().parents[3]
-    logs_dir = project_root / "logs" / "faiss_benchmark"
+    experiment_name = "faiss_benchmark_3"
+    
+    logs_dir = project_root / "logs" / experiment_name
     # Session log captures cross-model orchestration messages in one place.
     session_log_path = (
         logs_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
@@ -132,7 +135,7 @@ if __name__ == "__main__":
         logger.info("Loaded %d queries from %s", len(queries), queries_path)
 
     logger.info("Initializing encoder...")
-    encoder = BGEEncoder()
+    encoder = MPNetEncoder()
 
     # we need corpus_embeddings to build the index, and corpus_ids for mapping back search results to paper IDs
     papers_dict = {p["paper_id"]: p for p in papers}
@@ -162,6 +165,7 @@ if __name__ == "__main__":
             corpus_ids,
             logger=logger,
             logs_dir=logs_dir,
+            experiment_name=experiment_name,
         )
         logger.info("Completed benchmark for %s. Metrics: %s", index_name, metrics)
         results.append((index_name, metrics))

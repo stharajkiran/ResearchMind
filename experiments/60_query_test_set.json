@@ -1,421 +1,421 @@
 [
   {
-    "query": "improving image classification with small training sets using nonlinear dynamical transformations before softmax layer",
+    "query": "detecting anomalous behavior in belief-based planning algorithms using logical constraints",
     "relevant_paper_ids": [
-      "2604.14645v1"
+      "2012.12732v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "chaotic maps feature transformation CNN limited data CIFAR MNIST",
+    "query": "POMCP policy interpretability SMT anomaly detection",
     "relevant_paper_ids": [
-      "2604.14645v1"
+      "2012.12732v2"
     ],
     "category": "technical"
   },
   {
-    "query": "statistical optimality properties of probabilistic deep learning models under squared error loss",
+    "query": "autonomous high-throughput characterization of material composition gradients using probe-based measurements",
     "relevant_paper_ids": [
-      "2604.04673v1"
+      "2412.18067v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "Bayesian neural networks minimax admissibility ReLU decision theory",
+    "query": "Bayesian optimization scanning probe microscopy combinatorial ferroelectric libraries",
     "relevant_paper_ids": [
-      "2604.04673v1"
+      "2412.18067v2"
     ],
     "category": "technical"
   },
   {
-    "query": "how do language models handle facts that change over time and what methods best keep them current",
+    "query": "generating ranked item lists efficiently using two-stage planning and user preference alignment",
     "relevant_paper_ids": [
-      "2604.05096v2"
+      "2512.24787v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "Chronos time-aware retrieval LLM continuous knowledge drift benchmark",
+    "query": "HiGR hierarchical generative slate recommendation autoregressive decoding",
     "relevant_paper_ids": [
-      "2604.05096v2"
+      "2512.24787v2"
     ],
     "category": "technical"
   },
   {
-    "query": "browser extension for literature screening in systematic reviews without requiring a server or programming knowledge",
+    "query": "reducing performance gap between lab and real-world muscle signal gesture control across multiple sessions",
     "relevant_paper_ids": [
-      "2604.08602v1"
+      "1912.09380v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "TiAb Review Plugin Gemini active learning systematic review screening",
+    "query": "EMG gesture recognition domain adaptation virtual reality recalibration",
     "relevant_paper_ids": [
-      "2604.08602v1"
+      "1912.09380v2"
     ],
     "category": "technical"
   },
   {
-    "query": "hybrid surrogate model combining neural networks and finite difference for fluid dynamics simulation without retraining across parameter changes",
+    "query": "reducing hallucinations in non-English text summarization using natural language inference signals",
     "relevant_paper_ids": [
-      "2604.02663v1"
+      "2212.10622v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "parameterized physics-informed neural networks coupled FDM thermal-hydraulic MELCOR",
+    "query": "multilingual summarization factual consistency NLI data filtering XLSum",
     "relevant_paper_ids": [
-      "2604.02663v1"
+      "2212.10622v2"
     ],
     "category": "technical"
   },
   {
-    "query": "estimating unmeasured thermal and hydraulic states in sparse district heating systems using graph-based deep learning",
+    "query": "unsupervised word replacement simplification using masked language models and semantic filtering",
     "relevant_paper_ids": [
-      "2604.10166v1"
+      "2212.09855v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "heterogeneous spatial-temporal GNN virtual sensing district heating",
+    "query": "LSBert RoBERTa lexical simplification TSAR-2022 shared task",
     "relevant_paper_ids": [
-      "2604.10166v1"
+      "2212.09855v1"
     ],
     "category": "technical"
   },
   {
-    "query": "autonomous AI agents performing structural analysis from photos without human intervention",
+    "query": "automatically verifying claims in scientific literature using sentence-level evidence and stance detection",
     "relevant_paper_ids": [
-      "2604.06788v2"
+      "2012.14500v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "multi-agent LLM finite element analysis engineering workflow automation",
+    "query": "SciFact multi-task BERT rationale selection stance prediction",
     "relevant_paper_ids": [
-      "2604.06788v2"
+      "2012.14500v2"
     ],
     "category": "technical"
   },
   {
-    "query": "energy-efficient activity recognition on wearable devices using neuromorphic computing with early exit",
+    "query": "extending graph community detection methods to higher-order relational structures beyond pairwise connections",
     "relevant_paper_ids": [
-      "2604.10458v1"
+      "1812.10869v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "PAS-Net spiking neural network IMU human activity recognition",
+    "query": "hypergraph modularity maximization Louvain clustering algorithm",
     "relevant_paper_ids": [
-      "2604.10458v1"
+      "1812.10869v1"
     ],
     "category": "technical"
   },
   {
-    "query": "reconstructing high-dimensional particle beam distributions from limited 2D measurements using generative models",
+    "query": "combining vision transformers and convolutional networks for real-time crop disease identification in agriculture",
     "relevant_paper_ids": [
-      "2604.03885v2"
+      "2312.16331v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "PhaseFlow4D latent diffusion 4D phase space beam reconstruction FRIB",
+    "query": "TomFormer transformer CNN fusion tomato leaf disease detection PlantVillage",
     "relevant_paper_ids": [
-      "2604.03885v2"
+      "2312.16331v1"
     ],
     "category": "technical"
   },
   {
-    "query": "improving exploration diversity in language model reinforcement learning without sacrificing task performance",
+    "query": "building a reading comprehension benchmark for a low-resource language with limited existing datasets",
     "relevant_paper_ids": [
-      "2604.11510v1"
+      "2412.20212v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "Policy Split dual-mode entropy regularization LLM reinforcement learning",
+    "query": "Persian question answering dataset ParsBERT XLM-RoBERTa ensemble",
     "relevant_paper_ids": [
-      "2604.11510v1"
+      "2412.20212v1"
     ],
     "category": "technical"
   },
   {
-    "query": "benchmark for evaluating information leakage in collaborative AI agent systems serving users across social platforms",
+    "query": "unified framework for extracting structured information across multiple task types in both Asian and Western languages",
     "relevant_paper_ids": [
-      "2604.01487v2"
+      "2312.15548v3"
     ],
     "category": "semantic"
   },
   {
-    "query": "AgentSocialBench privacy risks LLM agentic social networks",
+    "query": "YAYI-UIE instruction tuning Chinese information extraction",
     "relevant_paper_ids": [
-      "2604.01487v2"
+      "2312.15548v3"
     ],
     "category": "technical"
   },
   {
-    "query": "combining reinforcement learning with automated planning by learning action preconditions and effects from environment interactions",
+    "query": "how translation model design choices affect fairness in representing masculine and feminine references across languages",
     "relevant_paper_ids": [
-      "2604.08685v1"
+      "2012.13176v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "RAMP hybrid deep reinforcement learning numeric action model learning",
+    "query": "multilingual NMT architecture gender bias shared encoder",
     "relevant_paper_ids": [
-      "2604.08685v1"
+      "2012.13176v1"
     ],
     "category": "technical"
   },
   {
-    "query": "synthetic multivariate time series generation tool with controllable inter-variable dependencies and fine-grained anomaly ground truth labels",
+    "query": "modifying how transformer models attend to input tokens during the prompt processing phase to improve performance without extra cost",
     "relevant_paper_ids": [
-      "2604.14221v1"
+      "2412.18487v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "Fun-TSG customizable time series generator variable-level anomaly labeling",
+    "query": "segment-based attention masking GPT prefill Llama Qwen",
     "relevant_paper_ids": [
-      "2604.14221v1"
+      "2412.18487v1"
     ],
     "category": "technical"
   },
   {
-    "query": "converting deep neural networks into linear approximations using operator theory and model compression techniques for hardware-friendly deployment",
+    "query": "detecting anomalous financial transactions using graph networks when only a small fraction of examples are labeled",
     "relevant_paper_ids": [
-      "2604.06732v1"
+      "2412.18287v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "Koopman operator knowledge distillation linearized neural network classification",
+    "query": "GTAN semi-supervised graph neural network fraud detection",
     "relevant_paper_ids": [
-      "2604.06732v1"
+      "2412.18287v1"
     ],
     "category": "technical"
   },
   {
-    "query": "comparing document parsing strategies and text segmentation approaches for question answering over financial reports using retrieval-augmented systems",
+    "query": "assigning alternatives to categories using multiple conflicting criteria with hierarchical structure and probabilistic parameter uncertainty",
     "relevant_paper_ids": [
-      "2604.12047v1"
+      "1812.08596v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "RAG pipeline PDF parsing chunking strategies financial question answering evaluation",
+    "query": "SMAA Cat-SD hierarchical nominal classification ELECTRE criteria",
     "relevant_paper_ids": [
-      "2604.12047v1"
+      "1812.08596v2"
     ],
     "category": "technical"
   },
   {
-    "query": "automated end-to-end machine learning pipeline using LLM agents for competitive data science tasks",
+    "query": "controlling camera viewpoint and motion independently in video generation from a single input video",
     "relevant_paper_ids": [
-      "2604.14455v1"
+      "2512.25075v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "AIBuildAI hierarchical agent MLE-Bench Kaggle automation",
+    "query": "SpaceTimePilot video diffusion disentangled space time rendering",
     "relevant_paper_ids": [
-      "2604.14455v1"
+      "2512.25075v1"
     ],
     "category": "technical"
   },
   {
-    "query": "using visually similar unicode characters to fool authorship identification systems",
+    "query": "using spintronic devices to perform neural network weight updates near memory hardware",
     "relevant_paper_ids": [
-      "2604.10271v1"
+      "1912.12636v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "homoglyph substitution adversarial stylometry authorship obfuscation",
+    "query": "magnetic tunnel junction synapse ternary neural network training GXNOR",
     "relevant_paper_ids": [
-      "2604.10271v1"
+      "1912.12636v2"
     ],
     "category": "technical"
   },
   {
-    "query": "fine-tuning language models for drug-like molecule editing while preserving core chemical structure",
+    "query": "automatically discovering better selection formulas for tree search using evolutionary computation in board games",
     "relevant_paper_ids": [
-      "2604.12350v1"
+      "2112.09697v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "scaffold-conditioned preference optimization molecular LLM drug discovery",
+    "query": "evolving UCT expression MCTS Carcassonne evolutionary strategy",
     "relevant_paper_ids": [
-      "2604.12350v1"
+      "2112.09697v1"
     ],
     "category": "technical"
   },
   {
-    "query": "autonomous agent system for hypothesis-driven analysis and narrative generation over structured tabular data",
+    "query": "comparing transformer and convolutional architectures for spinal structure delineation in medical scans",
     "relevant_paper_ids": [
-      "2604.06474v1"
+      "2412.18894v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "DataSTORM LLM agent exploratory data analysis InsightBench",
+    "query": "lumbar disc segmentation ResUnext TransUNet MRI deep learning comparison",
     "relevant_paper_ids": [
-      "2604.06474v1"
+      "2412.18894v1"
     ],
     "category": "technical"
   },
   {
-    "query": "decentralized ledger enforcing human approval requirements in multi-drone disaster response coordination",
+    "query": "predicting how strongly antibodies bind to targets using only protein sequence information without structural data",
     "relevant_paper_ids": [
-      "2604.04265v1"
+      "2512.22007v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "blockchain smart contract human oversight UAV wildfire detection POMDP",
+    "query": "ESM-2 dual stream CNN transformer antigen antibody affinity sequence-only prediction",
     "relevant_paper_ids": [
-      "2604.04265v1"
+      "2512.22007v1"
     ],
     "category": "technical"
   },
   {
-    "query": "detecting driver drowsiness from video using lightweight graph-based facial analysis with state space models",
+    "query": "how often do artificial test inputs for neural networks fall outside the valid input distribution",
     "relevant_paper_ids": [
-      "2604.08435v1"
+      "2212.11368v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "HST-HGN hypergraph Bi-Mamba driver fatigue assessment",
+    "query": "test input generators deep learning validity empirical study",
     "relevant_paper_ids": [
-      "2604.08435v1"
+      "2212.11368v1"
     ],
     "category": "technical"
   },
   {
-    "query": "classifying structural changes in string instruments using machine learning on 3D scan data",
+    "query": "classifying biological cells with limited labeled training images using generative models and transfer learning",
     "relevant_paper_ids": [
-      "2604.02446v1"
+      "1812.11006v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "SVM decision trees violin photogrammetric mesh width detection",
+    "query": "TOP-GAN cancer cell classification small training set holography",
     "relevant_paper_ids": [
-      "2604.02446v1"
+      "1812.11006v1"
     ],
     "category": "technical"
   },
   {
-    "query": "neural network approach to finding multiple equilibrium solutions of nonlinear physics equations",
+    "query": "how should organizations choose between AI models when balancing performance, budget, and regulatory constraints simultaneously",
     "relevant_paper_ids": [
-      "2603.27936v2"
+      "2512.23487v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "Deflation-PINNs multiple solutions Landau-de Gennes liquid crystals",
+    "query": "ML Compass AI model selection capability cost compliance framework",
     "relevant_paper_ids": [
-      "2603.27936v2"
+      "2512.23487v1"
     ],
     "category": "technical"
   },
   {
-    "query": "preventing data leakage in automated model training pipelines through proper cross-validation preprocessing",
+    "query": "generating adversarial perturbations that transfer across models without training many separate networks",
     "relevant_paper_ids": [
-      "2604.05225v1"
+      "1812.03413v3"
     ],
     "category": "semantic"
   },
   {
-    "query": "fastml R package guarded resampling preprocessing leakage AutoML",
+    "query": "Ghost Networks adversarial transferability feature-level perturbations ensemble attack",
     "relevant_paper_ids": [
-      "2604.05225v1"
+      "1812.03413v3"
     ],
     "category": "technical"
   },
   {
-    "query": "conversational AI system for iterative troubleshooting that tracks diagnostic state across multiple turns",
+    "query": "adaptive sampling strategy to minimize information staleness over unreliable links when delay distributions are not known in advance",
     "relevant_paper_ids": [
-      "2604.05350v2"
+      "2412.18119v2"
     ],
     "category": "semantic"
   },
   {
-    "query": "DQA diagnostic question answering enterprise IT support RAG",
+    "query": "Age of Information optimal sampling unknown channel statistics Robbins-Monro",
     "relevant_paper_ids": [
-      "2604.05350v2"
+      "2412.18119v2"
     ],
     "category": "technical"
   },
   {
-    "query": "how do skills emerge in a predictable order during neural network pretraining",
+    "query": "detecting geometric irregularities in data point sets using spectral methods on graphs",
     "relevant_paper_ids": [
-      "2604.08510v1"
+      "2301.00201v4"
     ],
     "category": "semantic"
   },
   {
-    "query": "implicit curriculum hypothesis LLM capability emergence pretraining order",
+    "query": "graph Laplacian singularity detection point cloud manifold",
     "relevant_paper_ids": [
-      "2604.08510v1"
+      "2301.00201v4"
     ],
     "category": "technical"
   },
   {
-    "query": "fully automated system that designs and runs medical imaging experiments without human input",
+    "query": "unified multimodal framework for detecting and explaining manipulated text in images using reasoning chains",
     "relevant_paper_ids": [
-      "2604.10696v1"
+      "2512.21482v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "Camyla autonomous research agent medical image segmentation benchmark",
+    "query": "LogicLens text forgery detection GRPO chain of thought",
     "relevant_paper_ids": [
-      "2604.10696v1"
+      "2512.21482v1"
     ],
     "category": "technical"
   },
   {
-    "query": "evaluating object detection models for autonomous driving with safety-critical error weighting",
+    "query": "benchmark dataset for evaluating natural language inference with complete explicit premises from real texts",
     "relevant_paper_ids": [
-      "2604.03325v1"
+      "1812.05813v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "EC-IoU safety-aware loss function 3D object detection autonomous vehicles",
+    "query": "textual entailment corpus precise natural language inference problems",
     "relevant_paper_ids": [
-      "2604.03325v1"
+      "1812.05813v1"
     ],
     "category": "technical"
   },
   {
-    "query": "simulating infectious disease spread on private contact networks while preserving individual anonymity",
+    "query": "memory-efficient belief updating system for autonomous agents using geometric duality and topological representations",
     "relevant_paper_ids": [
-      "2604.07493v1"
+      "1812.08313v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "differential privacy ERGM disease transmission contact network simulation",
+    "query": "universal memory architecture iterated belief revision median algebras robots",
     "relevant_paper_ids": [
-      "2604.07493v1"
+      "1812.08313v1"
     ],
     "category": "technical"
   },
   {
-    "query": "training a small local model to browse websites by learning from a large proprietary model",
+    "query": "accelerating likelihood-free parameter estimation for infectious disease spread models on specialized hardware",
     "relevant_paper_ids": [
-      "2604.07776v1"
+      "2012.14332v1"
     ],
     "category": "semantic"
   },
   {
-    "query": "Agent-as-Annotators web agent distillation WebArena open-weight model",
+    "query": "approximate Bayesian computation COVID-19 epidemiology IPU GPU acceleration",
     "relevant_paper_ids": [
-      "2604.07776v1"
+      "2012.14332v1"
     ],
     "category": "technical"
   }

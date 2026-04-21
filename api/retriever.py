@@ -1,24 +1,32 @@
-from pathlib import Path
 import json
 import logging
+import os
+from pathlib import Path
 
-from researchmind.embedding.models import BGEEncoder
+from researchmind.embedding.models import MPNetEncoder 
 from researchmind.retrieval.bm25_index import BM25IndexBuilder
 from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.retrieval.rrf import reciprocal_rank_fusion
 
-logger = logging.getLogger(__name__)  
+logger = logging.getLogger(__name__)
+
 
 class RetrieverService:
-    def __init__(self, project_root: Path): 
+    def __init__(self, project_root: Path):
         logger.info("Initializing Retriever service...")
         self.project_root = project_root
-        self.artifact_dir = self.project_root / "artifacts" / "indexes"
+        # INDEX_PHASE env var selects which artifact dir to load.
+        # Defaults to root (Phase 1 backward compat). Set INDEX_PHASE=phase2 for combined corpus.
+        phase = os.environ.get("INDEX_PHASE", "")
+        if phase:
+            self.artifact_dir = self.project_root / "artifacts" / "indexes" / phase
+        else:
+            self.artifact_dir = self.project_root / "artifacts" / "indexes"
     
     def load(self) -> None:
         logger.info("Loading retriever service...")
         # load encoder, faiss index, bm25 index, papers dict
-        self.encoder = BGEEncoder()
+        self.encoder = MPNetEncoder ()
         # Initialize retrievers
         self.faissRetriver = FaissIndexBuilder(dimension=self.encoder.dim, artifact_dir=self.artifact_dir)
         self.bm25Retriver = BM25IndexBuilder(artifact_dir=self.artifact_dir)
@@ -43,10 +51,15 @@ class RetrieverService:
 
     def _load_papers_dict(self) -> dict[str, dict]:
         logger.info("Loading papers metadata into dictionary...")
-        # load papers metadata into a dict for easy retrieval during search
-        papers_path = self.project_root / "data" / "processed" / "papers.jsonl"
-        with papers_path.open("r", encoding="utf-8") as f:
-            papers = [json.loads(line) for line in f]
-        papers_dict = {p["paper_id"]: p for p in papers}
+        processed = self.project_root / "data" / "processed"
+        sources = [processed / "papers.jsonl", processed / "papers_foundational.jsonl"]
+        papers_dict: dict[str, dict] = {}
+        for path in sources:
+            if not path.exists():
+                continue
+            with path.open(encoding="utf-8") as f:
+                for line in f:
+                    p = json.loads(line)
+                    papers_dict.setdefault(p["paper_id"], p)
         logger.info("Loaded %d papers into dictionary.", len(papers_dict))
         return papers_dict

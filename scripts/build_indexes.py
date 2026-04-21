@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from numpy import ndarray
 
-from researchmind.embedding.models import BGEEncoder
+from researchmind.embedding.models import MPNetEncoder
 from researchmind.retrieval.bm25_index import BM25IndexBuilder
 from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.utils.logging import configure_logging
@@ -25,7 +25,7 @@ class IndexBuilderService:
 
     def _load_encoder(self):
         logger.info("Loading encoder model...")
-        self.encoder = BGEEncoder()
+        self.encoder = MPNetEncoder()
         logger.info("Encoder model loaded successfully.")
 
     def _load_IndexBuilders(self):

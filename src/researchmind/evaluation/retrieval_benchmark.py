@@ -4,53 +4,22 @@ from time import time
 import logging
 from datetime import datetime
 from collections import defaultdict
-from dataclasses import dataclass
 import numpy as np
+ 
 import mlflow
-from researchmind.embedding.models import BGEEncoder
+from researchmind.embedding.models import MPNetEncoder
 from researchmind.retrieval.bm25_index import BM25IndexBuilder
 from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.utils.logging import configure_logging
 from researchmind.retrieval.rrf import reciprocal_rank_fusion
-from dotenv import load_dotenv
+from researchmind.utils.datatypes import RetrieverMetrics
 
+
+from dotenv import load_dotenv
 load_dotenv()
 
-
-@dataclass
-class retriever_metrics:
-    semantic_found: float = 0.0
-    technical_found: float = 0.0
-    semantic_count: int = 0
-    technical_count: int = 0
-
-    @property
-    def semantic_recall(self) -> float:
-        return (
-            self.semantic_found / self.semantic_count
-            if self.semantic_count > 0
-            else 0.0
-        )
-
-    @property
-    def technical_recall(self) -> float:
-        return (
-            self.technical_found / self.technical_count
-            if self.technical_count > 0
-            else 0.0
-        )
-
-    def update_found(self, q: dict, found: bool) -> None:
-        if q["category"] == "semantic":
-            self.semantic_found += found
-            self.semantic_count += 1
-        elif q["category"] == "technical":
-            self.technical_found += found
-            self.technical_count += 1
-
-
 def run_benchmark(
-    encoder: BGEEncoder,
+    encoder: MPNetEncoder,
     queries: list[dict],
     query_embeddings: np.ndarray,
     corpus_ids: list[str],
@@ -98,7 +67,7 @@ def run_benchmark(
             )
             bm25Retriver.build_index(corpus_texts, corpus_ids)
 
-            recalls = defaultdict(retriever_metrics)
+            recalls = defaultdict(RetrieverMetrics)
             logger.info(
                 "Running %d queries and %d query embeddings...",
                 len(queries),
@@ -157,8 +126,10 @@ def run_benchmark(
 
 
 if __name__ == "__main__":
+    experiment_name = "retrieval_benchmark"
+
     project_root = Path(__file__).resolve().parents[3]
-    logs_dir = project_root / "logs" / "faiss_benchmark"
+    logs_dir = project_root / "logs" / experiment_name
     # Session log captures cross-model orchestration messages in one place.
     session_log_path = (
         logs_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
@@ -180,7 +151,7 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------
     logger.info("Initializing encoder...")
-    encoder = BGEEncoder()
+    encoder = MPNetEncoder()
 
     # we need corpus_embeddings to build the index, and corpus_ids for mapping back search results to paper IDs
     papers_dict = {p["paper_id"]: p for p in papers}
@@ -193,7 +164,6 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------
     # Implement run_benchmark and call it for each index type
 
-    experiment_name = "retrieval_benchmark"
     logger.info("Running benchmark for %s...", experiment_name)
 
     metrics = run_benchmark(

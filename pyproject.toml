@@ -18,8 +18,27 @@ dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
     "pydantic>=2.7.0",
+    "python-multipart>=0.0.9",
     # LLM
     "anthropic>=0.28.0",
+    # LangChain retrieval
+    "langchain>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-chroma>=0.2.0",
+    # Vector store (user docs)
+    "chromadb>=0.5.0",
+    # Async task queue
+    "celery[eventlet]>=5.4.0",
+    "eventlet>=0.37.0",
+    # Caching
+    "redis>=5.0.0",
+    # Citation graph
+    "networkx>=3.3.0",
+    # PDF parsing
+    "pypdf>=4.0.0",
+    # Evaluation
+    "ragas>=0.2.0",
     # Experiment tracking and data versioning
     "mlflow>=2.13.0",
     "dvc[s3]>=3.51.0",
@@ -34,6 +53,7 @@ dependencies = [
     "bm25s>=0.3.4",
     "prometheus-fastapi-instrumentator>=7.1.0",
     "locust>=2.43.4",
+    "adapters>=1.2.0",
 ]
 
 [project.optional-dependencies]
