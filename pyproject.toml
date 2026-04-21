@@ -32,6 +32,8 @@ dependencies = [
     "peft>=0.19.1",
     "torch>=2.11.0",
     "bm25s>=0.3.4",
+    "prometheus-fastapi-instrumentator>=7.1.0",
+    "locust>=2.43.4",
 ]
 
 [project.optional-dependencies]

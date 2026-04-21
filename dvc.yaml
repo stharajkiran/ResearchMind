@@ -1,33 +1,33 @@
 stages:
-  fetch_arxiv:
-    cmd: python -m researchmind.ingestion.arxiv_bulk --output data/raw/arxiv
+  ingest:
+    cmd: python -m researchmind.ingestion.pipeline
     deps:
-      - src/researchmind/ingestion/arxiv_bulk.py
+      - src/researchmind/ingestion/
     outs:
-      - data/raw/arxiv
+      - data/processed/papers.jsonl
 
-  fetch_semantic_scholar:
-    cmd: python -m researchmind.ingestion.s2_client --input data/raw/arxiv --output data/raw/s2_metadata
-    deps:
-      - src/researchmind/ingestion/s2_client.py
-      - data/raw/arxiv
-    outs:
-      - data/raw/s2_metadata
+  # fetch_semantic_scholar:
+  #   cmd: python -m researchmind.ingestion.s2_client --input data/raw/arxiv --output data/raw/s2_metadata
+  #   deps:
+  #     - src/researchmind/ingestion/s2_client.py
+  #     - data/raw/arxiv
+  #   outs:
+  #     - data/raw/s2_metadata
 
-  chunk:
-    cmd: python -m researchmind.chunker.pipeline --input data/raw/arxiv --output data/processed/chunks.jsonl
-    deps:
-      - src/researchmind/chunker/
-      - data/raw/arxiv
-    outs:
-      - data/processed/chunks.jsonl
+  # chunk:
+  #   cmd: python -m researchmind.chunker.pipeline --input data/raw/arxiv --output data/processed/chunks.jsonl
+  #   deps:
+  #     - src/researchmind/chunker/
+  #     - data/raw/arxiv
+  #   outs:
+  #     - data/processed/chunks.jsonl
 
   build_indexes:
-    cmd: python -m researchmind.retrieval.build_indexes --input data/processed/chunks.jsonl --output artifacts/indexes
+    cmd: python -m scripts.build_indexes
     deps:
+      - scripts/build_indexes.py
       - src/researchmind/retrieval/
       - src/researchmind/embedding/
-      - data/processed/chunks.jsonl
+      - data/processed/papers.jsonl
     outs:
       - artifacts/indexes
-      - artifacts/embeddings

@@ -19,7 +19,6 @@ class BM25IndexBuilder:
         # Save the ID map for later retrieval
         self._save_index()
 
-
     def search(self, query: str, k: int = 10) -> list[str]:
         """
         Returns ranked paper IDs for a given query.
@@ -28,18 +27,18 @@ class BM25IndexBuilder:
 
         # Retrieve
         results, _ = self.retriever.retrieve(tokenized_query, k=k)
-        
+
         # results contains indices, map them back to strings
         return [self.corpus_ids[i] for i in results[0]]
 
     def _save_index(self):
         """Save the index to disk. Save the corpus ids as pickle"""
-        self.retriever.save(self.artifact_dir / "bm25_index.json") 
+        self.retriever.save(self.artifact_dir / "bm25_index.json")
         with open(self.artifact_dir / "bm25_id_map.pkl", "wb") as f:
             pickle.dump(self.corpus_ids, f)
 
-    def load_index(self, path: str):
+    def load_index(self):
         """Load the index from disk."""
-        self.retriever = bm25s.BM25.load(path)
+        self.retriever = bm25s.BM25.load(self.artifact_dir / "bm25_index.json")
         with open(self.artifact_dir / "bm25_id_map.pkl", "rb") as f:
-            self.id_map = pickle.load(f)
+            self.corpus_ids = pickle.load(f)

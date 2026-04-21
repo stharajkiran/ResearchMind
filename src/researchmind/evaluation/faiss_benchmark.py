@@ -4,13 +4,18 @@ from time import time
 import logging
 from datetime import datetime
 import numpy as np
+
 import mlflow
 from researchmind.embedding.models import BGEEncoder, BaseResearchEncoder
 from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.utils.logging import configure_logging
 
 from dotenv import load_dotenv
+
 load_dotenv()
+
+
+
 
 def run_benchmark(
     faissIndex: FaissIndexBuilder,
@@ -55,7 +60,11 @@ def run_benchmark(
 
             latencies = []
             recalls = []
-            logger.info("Running %d queries and %d query embeddings...", len(queries), len(query_embeddings))
+            logger.info(
+                "Running %d queries and %d query embeddings...",
+                len(queries),
+                len(query_embeddings),
+            )
             for q, query_embedding in zip(queries, query_embeddings):
                 start_time = time()
                 top10_ids = faissIndex.search(query_embedding.reshape(1, -1), k=10)
@@ -123,8 +132,8 @@ if __name__ == "__main__":
         logger.info("Loaded %d queries from %s", len(queries), queries_path)
 
     logger.info("Initializing encoder...")
-    encoder = BGEEncoder()  
-    
+    encoder = BGEEncoder()
+
     # we need corpus_embeddings to build the index, and corpus_ids for mapping back search results to paper IDs
     papers_dict = {p["paper_id"]: p for p in papers}
     corpus_ids = list(papers_dict.keys())
@@ -134,9 +143,7 @@ if __name__ == "__main__":
     logger.info("Encoder initialized successfully.")
 
     # Initialize FaissIndexBuilder with the correct dimension from the encoder
-    faissIndex = FaissIndexBuilder(
-        dimension=encoder.dim
-    ) 
+    faissIndex = FaissIndexBuilder(dimension=encoder.dim)
     # Implement run_benchmark and call it for each index type
     results = []
     for index_name in [
