@@ -24,7 +24,16 @@ class RawPaper(BaseModel):
     class Config:
         frozen = True                          # immutable after creation
 
+class ParsedPaper(BaseModel):
+    paper:RawPaper
+    sections: dict[str, str]                     # {"Introduction": "text", "Methods": "text", ...}
 
-class S2Author(BaseModel):
-    author_id: str
-    name: str
+class Chunk(BaseModel):
+    chunk_id: str
+    paper_id: str
+    section: str
+    text: str
+    page: int | None
+    authors: list[str]
+    year: int
+    title: str
