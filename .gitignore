@@ -12,8 +12,13 @@ build/
 
 # Data and artifacts — tracked by DVC, not git
 data/raw/
-data/processed/
+data/processed/*
+data/chroma_db/
+!data/processed/.gitkeep
 artifacts/
+
+# Allow DVC tracking files (Crucial)
+!*.dvc
 
 # MLflow
 mlruns/

@@ -33,7 +33,7 @@ class Chunk(BaseModel):
     paper_id: str
     section: str
     text: str
-    page: int | None
+    page: int | None = None
     authors: list[str]
     year: int
     title: str

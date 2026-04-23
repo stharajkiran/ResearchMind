@@ -11,4 +11,14 @@ class SearchResult(BaseModel):
     title: str
     abstract: str
 
+class RAGRequest(BaseModel):
+    query: str
+    session_id: str | None = None  # for Redis multi-turn context lookup
+
+class RAGResponse(BaseModel):
+    response: str
+    sources: list[str]
+    confidence: float
+    citations: list[str]
+
 

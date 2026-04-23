@@ -1,0 +1,97 @@
+[
+  {
+    "chunk_id": "2012.12556v6_full_text_180",
+    "paper_id": "2012.12556v6",
+    "section": "fulltext",
+    "text": "transformer into real device-based applications. Furthermore, we also take a brief look at the self-attention mechanism in computer vision, as it is the base component in transformer. Toward the end of this paper, we discuss the challenges and provide several further research directions for vision transformers. Index Terms\u2014Transformer, Self-attention, Computer Vision, High-level vision, Low-level vision, Video. \u2726 1",
+    "page": null,
+    "authors": [
+      "Kai Han",
+      "Yunhe Wang",
+      "Hanting Chen",
+      "Xinghao Chen",
+      "Jianyuan Guo",
+      "Zhenhua Liu",
+      "Yehui Tang",
+      "An Xiao",
+      "Chunjing Xu",
+      "Yixing Xu",
+      "Zhaohui Yang",
+      "Yiman Zhang",
+      "Dacheng Tao"
+    ],
+    "year": 2020,
+    "title": "A Survey on Visual Transformer"
+  },
+  {
+    "chunk_id": "2012.12556v6_Introduction_1260",
+    "paper_id": "2012.12556v6",
+    "section": "introduction",
+    "text": "takes all the encodings and using their incorporated contextual information to generate the output sequence. Each transformer block is composed of a multi-head attention layer, a feed-forward neural network, shortcut connection and layer normalization. In the following, we describe each component of the transformer in detail. Fig. 2: Structure of the original transformer (image from [9]). 2.1 Self-Attention In the self-attention layer, the input vector is first transformed into three different vectors: the query vector q, the key vector k and the value vector v with dimension dq = dk = dv = dmodel = 512. Vectors derived from different inputs are then packed together into three different matrices, namely, Q, K and V. Subsequently, the attention function between different input vectors is calculated as follows (and shown in Figure 3 left): \u2022 Step 1: Compute scores between different input vectors with S = Q \u00b7 K\u22a4; \u2022 Step 2: Normalize the scores for the stability of gradient with Sn = S/\u221adk; \u2022 Step 3: Translate the scores into probabilities with softmax function P = softmax(Sn); \u2022 Step 4: Obtain the weighted value matrix with Z = V\u00b7P. The process can be unified into a single function: Attention(Q, K, V)",
+    "page": null,
+    "authors": [
+      "Kai Han",
+      "Yunhe Wang",
+      "Hanting Chen",
+      "Xinghao Chen",
+      "Jianyuan Guo",
+      "Zhenhua Liu",
+      "Yehui Tang",
+      "An Xiao",
+      "Chunjing Xu",
+      "Yixing Xu",
+      "Zhaohui Yang",
+      "Yiman Zhang",
+      "Dacheng Tao"
+    ],
+    "year": 2020,
+    "title": "A Survey on Visual Transformer"
+  },
+  {
+    "chunk_id": "2501.00073v1_Limitations_0",
+    "paper_id": "2501.00073v1",
+    "section": "limitation",
+    "text": "The claims that the paper makes are partly based on empirical analyses of particular Transformer architectures, and using particular datasets. The observations would not necessarily generalize to other architectures. While an attempt was made to construct synthetic datasets that are interesting and display a variety of features, we do not mathemati- cally prove that the observations we make would generalize to any dataset, and in fact it is likely that there could exist datasets to which our observations would not generalize. 8 Conclusions and future work In Transformers with causal attention and no posi- tional encodings, the adjacency pattern can occur for models with a wide range of hyperparameters, including the number of layers, hidden dimensions, and initialization schemes. It exists in the output embeddings of the Transformer\u2019s first causal atten- tion layer and persists throughout the rest of the layers. For randomly initialized weights, the adja- cency pattern can be observed for various initializa- tions, especially for the ones commonly occurring in practice. For trained models, it is typical that the adjacency pattern in the first few layers is more prominent than in later ones, which we consider reasonable because knowing enough position infor- mation in the earlier layers",
+    "page": null,
+    "authors": [
+      "Chunsheng Zuo",
+      "Pavel Guerzhoy",
+      "Michael Guerzhoy"
+    ],
+    "year": 2024,
+    "title": "Position Information Emerges in Causal Transformers Without Positional Encodings via Similarity of Nearby Embeddings"
+  },
+  {
+    "chunk_id": "2412.20004v1_Introduction_1980",
+    "paper_id": "2412.20004v1",
+    "section": "introduction",
+    "text": "to partial transformer layers at different positions (as illustrated in Figure 2), including all layers (de- noted as Layers-A), shallow layers {#0, #1, #2, #3} (denoted as Layers-S), medium layers {#4, #5, #6, #7} (denoted as Layers-M), and deep layers {#8, #9, #10, #11} (denoted as Layers-D). As shown in Figure 3, we can derive the following",
+    "page": null,
+    "authors": [
+      "Jun Liu",
+      "Yunming Liao",
+      "Hongli Xu",
+      "Yang Xu",
+      "Jianchun Liu",
+      "Chen Qian"
+    ],
+    "year": 2024,
+    "title": "Adaptive Parameter-Efficient Federated Fine-Tuning on Heterogeneous Devices"
+  },
+  {
+    "chunk_id": "2212.14852v3_References_5940",
+    "paper_id": "2212.14852v3",
+    "section": "reference",
+    "text": "of the multihead attention (MHA) as follows, mha(X; W) = h X i=1 headi = h X i=1 attnSM(Qi, Ki, Vi) \u2208RL\u00d7d, (C.3) which is parameterized by W = {(W q i , W k i , W v i )}i\u2208[h]. Here Qi = XW q i \u2208RL\u00d7dp, Ki = XW k i \u2208RL\u00d7dp, and Vi = XW v i \u2208RL\u00d7d for the attention head i \u2208[h], where W q i , W k i \u2208Rd\u00d7dp and W v i \u2208Rd\u00d7d. With X(0) \u22c6 = X, let X(t) \u22c6 \u2208RL\u00d7d be the intermediate input of the t-th layer (t = 0, . . . , T \u2212 1) of the transformer architecture, which is defined as follows, X(t) = ffn(X(t) \u22c6; A(t)), A(t) = (Ax,(t), A\u03c3,(t)), X(t+1) \u22c6 = mha(X(t); W (t)) + X(t), W (t) = \b (W q,(t) i , W k,(t) i , W v,(t) i ) i\u2208[h], (C.4) Here \u03b8(t) = (A(t), W (t)) is the learnable parameter. We compute the output as follows, by = agg\u03b8(X(T) \u22c6 ) \u2208Rdy, (C.5) where the aggregation layer agg\u03b8 : RL\u00d7d \u2192Y is parameterized by \u03b8. Here Y is defined in (5.2). Note that agg\u03b8 combines the aggregation layer",
+    "page": null,
+    "authors": [
+      "Yufeng Zhang",
+      "Boyi Liu",
+      "Qi Cai",
+      "Lingxiao Wang",
+      "Zhaoran Wang"
+    ],
+    "year": 2022,
+    "title": "An Analysis of Attention via the Lens of Exchangeability and Latent Variable Models"
+  }
+]
