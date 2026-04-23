@@ -37,3 +37,5 @@ class Chunk(BaseModel):
     authors: list[str]
     year: int
     title: str
+
+

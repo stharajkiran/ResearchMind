@@ -20,13 +20,12 @@ class MPNetEmbeddingFunction(EmbeddingFunction):
     def __call__(self, input: list[str]) -> Embeddings:
         return self.encoder.encode(input).tolist()
 
-find_project_root()
 class ChromaStore:
-    def __init__(self, collection_name: str):
+    def __init__(self, collection_name: str, encoder: MPNetEncoder | None = None):
         self.collection_name = collection_name
         self.client = chromadb.PersistentClient(path=str(find_project_root() / "data" / "chroma_db"))
 
-        encoder = MPNetEncoder()
+        encoder = encoder
         self.corpus_collection = self.client.get_or_create_collection(
             name=f"{collection_name}_corpus",
             embedding_function=MPNetEmbeddingFunction(encoder=encoder),
