@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 import json
 import logging
@@ -14,10 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 class IndexBuilderService:
-    def __init__(self, project_root: Path):
+    def __init__(
+        self,
+        artifact_dir: Path | None = None,
+        papers_path: Path | None = None,
+    ):
         logger.info("Initializing Index Builder service...")
-        self.project_root = project_root
-        self.artifact_dir = self.project_root / "artifacts" / "indexes"
+        self.artifact_dir = artifact_dir 
+        self.papers_path = papers_path
         self.encoder = None
         self.faissIndexBuilder = None
         self.bm25IndexBuilder = None
@@ -39,8 +44,7 @@ class IndexBuilderService:
     def _load_papers_dict(self):
         logger.info("Loading papers metadata into dictionary...")
         # load papers metadata into a dict for easy retrieval during search
-        papers_path = self.project_root / "data" / "processed" / "papers.jsonl"
-        with papers_path.open("r", encoding="utf-8") as f:
+        with self.papers_path.open("r", encoding="utf-8") as f:
             papers = [json.loads(line) for line in f]
         papers_dict = {p["paper_id"]: p for p in papers}
         self.papers_dict = papers_dict
@@ -64,19 +68,59 @@ class IndexBuilderService:
         self.bm25IndexBuilder.build_index(corpus_texts, corpus_ids)
         logger.info("BM25 index built and saved successfully.")
 
-    def run(self):
+    def run(self, index_type: str):
         self._load_encoder()
         self._load_IndexBuilders()
-        self._load_papers_dict()
-        corpus_ids = list(self.papers_dict.keys())
-        corpus_texts = [self.papers_dict[pid]["abstract"] for pid in corpus_ids]
-        corpus_embeddings = self.encoder.encode(corpus_texts)
-        self.build_faiss_index(corpus_embeddings, corpus_ids, index_type="HNSW32")
+
+        chunks_path = self.papers_path
+        with chunks_path.open() as f:
+            chunks = [json.loads(line) for line in f]
+    
+        corpus_ids = [c["chunk_id"] for c in chunks]
+        corpus_texts = [c["text"] for c in chunks]
+
+        logger.info("Encoding corpus texts into embeddings...")
+        corpus_embeddings = self.encoder.encode(corpus_texts, batch_size= 256)
+        logger.info("Corpus encoding completed successfully.")
+
+        self.build_faiss_index(corpus_embeddings, corpus_ids, index_type=index_type)
         self.build_bm25_index(corpus_texts, corpus_ids)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build FAISS and BM25 indexes from processed papers metadata."
+    )
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=find_project_root(),
+        help="Project root path. Defaults to auto-detected repository root.",
+    )
+    parser.add_argument(
+        "--artifact-dir",
+        type=Path,
+        default=Path(find_project_root() / "artifacts" / "indexes" / "phase2"),
+        help="Output directory for generated indexes. Defaults to <project-root>/artifacts/indexes.",
+    )
+    parser.add_argument(
+        "--papers-path",
+        type=Path,
+        default=Path(find_project_root() / "data" / "processed" / "cleaned_chunks.jsonl"),
+        help="Path to papers JSONL input file. Defaults to <project-root>/data/processed/cleaned_chunk.jsonl.",
+    )
+    parser.add_argument(
+        "--index-type",
+        type=str,
+        default="HNSW32",
+        choices=["Flat", "IVF", "HNSW32"],
+        help='FAISS index type to build: "Flat", "IVF", or "HNSW32".',
+    )
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    project_root = find_project_root()
+    cli_args = parse_args()
+    project_root = cli_args.project_root
     logs_dir = project_root / "logs" / "build_indexes"
     # Session log captures cross-model orchestration messages in one place.
     session_log_path = (
@@ -84,5 +128,8 @@ if __name__ == "__main__":
     )
     configure_logging(session_log_path, logger)
 
-    service = IndexBuilderService(project_root)
-    service.run()
+    service = IndexBuilderService(
+        artifact_dir=cli_args.artifact_dir,
+        papers_path=cli_args.papers_path,
+    )
+    service.run(index_type=cli_args.index_type)

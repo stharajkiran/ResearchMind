@@ -7,9 +7,12 @@ class SearchRequest(BaseModel):
     k: int = 10
 
 class SearchResult(BaseModel):
+    chunk_id: str
     paper_id: str
     title: str
-    abstract: str
+    section: str
+    text: str
+    year: int
 
 class RAGRequest(BaseModel):
     query: str
