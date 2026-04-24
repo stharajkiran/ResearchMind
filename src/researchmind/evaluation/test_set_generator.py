@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class TestQuery(BaseModel):
     question: str  # the query text
     ground_truth: str  # expected answer
-    reference_contexts: list[str]  # list of relevant chunk texts
+    reference_contexts: list[str]  # list of relevant chunk texts that should be retrieved (ground truth for retrieval).
     category: str  # the category of the query
     chunk_id: str  # the ID of the chunk
 

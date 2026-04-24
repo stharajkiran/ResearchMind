@@ -1,6 +1,6 @@
 from datetime import date
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class S2Author(BaseModel):
@@ -39,3 +39,29 @@ class Chunk(BaseModel):
     title: str
 
 
+# Define your strict schema
+class RAGResponse(BaseModel):
+    response: str = Field(
+        ...,
+        description="The detailed, technical answer synthesized from the provided research chunks. Adhere strictly to academic tone.",
+    )
+    sources: list[str] = Field(
+        ...,
+        description="A list of paper IDs that directly contributed to the answer. Only include papers that provided actual information.",
+    )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="A confidence score between 0.0 and 1.0 representing how well the context supports the answer.",
+    )
+    citations: list[str] = Field(
+        ...,
+        description="List of direct quotes from the provided chunks that support the response.",
+    )
+
+    # the chunk texts that were actually retrieved by your system at query time
+    # these texts are 
+    contexts: list[str] = Field(
+        default=[], description="Retrieved chunk texts used for synthesis"
+    )

@@ -86,6 +86,7 @@ class RetrieverService:
         q_embedding = self.encoder.encode([query])
         faiss_results = self.faissRetriver.search(q_embedding, k=k)
         bm25_results = self.bm25Retriver.search(query, k=k)
+        # final chunk ids after fusion
         rrf_results = reciprocal_rank_fusion(faiss_results, bm25_results)[:k]
         # map paper IDs to metadata
         # convert each dict into SearchResult model

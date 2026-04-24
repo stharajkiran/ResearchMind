@@ -37,8 +37,6 @@ dependencies = [
     "networkx>=3.3.0",
     # PDF parsing
     "pypdf>=4.0.0",
-    # Evaluation
-    "ragas>=0.2.0",
     # Experiment tracking and data versioning
     "mlflow>=2.13.0",
     "dvc[s3]>=3.51.0",
@@ -55,6 +53,7 @@ dependencies = [
     "locust>=2.43.4",
     "adapters>=1.2.0",
     "pymupdf>=1.27.2.2",
+    "ragas>=0.4.3",
 ]
 
 [project.optional-dependencies]

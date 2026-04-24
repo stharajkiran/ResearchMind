@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
 
 _BASE = "https://api.openalex.org"
 _ARXIV_PREFIX = "https://arxiv.org/abs/"
@@ -67,12 +66,22 @@ def _resolve_openalex_ids_to_arxiv(openalex_ids: list[str]) -> list[str]:
             data = r.json() if r.is_success else None
             if not data:
                 continue
+
             for work in data.get("results", []):
                 arxiv_url = (work.get("ids") or {}).get("arxiv", "")
+                # this is where we filter out non-arXiv papers — if no arXiv ID, skip
                 if arxiv_url.startswith(_ARXIV_PREFIX):
                     raw_id = arxiv_url.replace(_ARXIV_PREFIX, "").strip()
                     # Normalise: "1706.03762v7" → "1706.03762"
                     arxiv_ids.append(raw_id.split("v")[0])
+
+                 # fallback: extract from DOI if arxiv field missing
+                if not arxiv_url:
+                    doi = (work.get("ids") or {}).get("doi", "")
+                    if "arxiv" in doi.lower():
+                        arxiv_id = doi.split("arxiv.")[-1]
+                        arxiv_ids.append(arxiv_id.split("v")[0])
+                
         except Exception as exc:
             logger.warning("OpenAlex batch resolve failed for IDs %s: %s", chunk, exc)
         time.sleep(0.15)  # stay within polite pool
@@ -82,7 +91,7 @@ def _resolve_openalex_ids_to_arxiv(openalex_ids: list[str]) -> list[str]:
 
 def get_referenced_arxiv_ids(arxiv_id: str) -> list[str]:
     """
-    Return arXiv IDs of papers this paper's reference list (outbound edges).
+    Return arXiv IDs of papers that this paper cites (outbound edges).
     Uses batch resolution — one OpenAlex call per 50 references.
     """
     work = get_work(arxiv_id)
