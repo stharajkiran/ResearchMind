@@ -54,6 +54,7 @@ dependencies = [
     "adapters>=1.2.0",
     "pymupdf>=1.27.2.2",
     "ragas>=0.4.3",
+    "pyvis>=0.3.2",
 ]
 
 [project.optional-dependencies]

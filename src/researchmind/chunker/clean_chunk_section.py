@@ -96,7 +96,7 @@ def save_cleaned_chunks(chunks: list[dict], output_path: Path):
 
 if __name__ == "__main__":
     root_direct = find_project_root()
-    chunks_path = root_direct / "data/processed/chunks.jsonl"
+    chunks_path = root_direct / "data/processed/semantic_chunks.jsonl"
     chunks = clean_section(chunks_path)
-    output_path = root_direct / "data/processed/cleaned_chunks.jsonl"
+    output_path = root_direct / "data/processed/cleaned_semantic_chunks.jsonl"
     save_cleaned_chunks(chunks, output_path)

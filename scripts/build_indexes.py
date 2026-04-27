@@ -100,13 +100,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--artifact-dir",
         type=Path,
-        default=Path(find_project_root() / "artifacts" / "indexes" / "phase2"),
+        default=Path(find_project_root() / "artifacts" / "indexes" / "semantic"),
         help="Output directory for generated indexes. Defaults to <project-root>/artifacts/indexes.",
     )
     parser.add_argument(
         "--papers-path",
         type=Path,
-        default=Path(find_project_root() / "data" / "processed" / "cleaned_chunks.jsonl"),
+        default=Path(find_project_root() / "data" / "processed" / "cleaned_semantic_chunks.jsonl"),
         help="Path to papers JSONL input file. Defaults to <project-root>/data/processed/cleaned_chunk.jsonl.",
     )
     parser.add_argument(
@@ -127,6 +127,7 @@ if __name__ == "__main__":
         logs_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     )
     configure_logging(session_log_path, logger)
+    logger.info("Starting Index Builder service with arguments: %s", cli_args)
 
     service = IndexBuilderService(
         artifact_dir=cli_args.artifact_dir,

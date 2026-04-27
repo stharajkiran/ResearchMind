@@ -1,10 +1,14 @@
 from pathlib import Path
 import pickle
 import networkx as nx
-from researchmind.ingestion.openalex_client import get_work, get_referenced_arxiv_ids
+from researchmind.ingestion.openalex_client import get_referenced_arxiv_ids
 import logging
+from tqdm import tqdm
+import json
+from researchmind.utils.find_root import find_project_root
 
 logger = logging.getLogger(__name__)
+
 
 def build_graph(corpus_ids: list[str]) -> nx.DiGraph:
     """Build  a directed citation graph from the given list of paper IDs.
@@ -16,20 +20,30 @@ def build_graph(corpus_ids: list[str]) -> nx.DiGraph:
         nx.DiGraph: A directed graph where nodes are paper IDs and edges represent citations (A → B means A cites B).
     """
     # Dict[str, list[str]] mapping paper_id to list of cited paper_ids (outbound edges)
-    citation_graph = {} 
-    for arxiv_id in corpus_ids:
+    citation_graph = {}
+    for arxiv_id in tqdm(
+        corpus_ids,
+        desc="Building citation graph",
+        total=len(corpus_ids),
+        unit="paper",
+        unit_scale=True,
+        smoothing=0.1,
+    ):
         try:
             # papers cited by this paper (outbound edges)
             reference_arxiv_ids = get_referenced_arxiv_ids(arxiv_id)
             if reference_arxiv_ids is None:
-                logger.warning(f"No citation data returned for {arxiv_id}. Skipping.")
+                logger.warning("No citation data returned for %s. Skipping.", arxiv_id)
                 continue
-            
+
             # Filter out references that are not in the corpus (e.g. non-arXiv papers or arXiv papers outside our dataset)
-            clean_references = [ref for ref in reference_arxiv_ids if ref and ref in set(corpus_ids)]    
+            distinct_corpus = set(corpus_ids)
+            clean_references = [
+                ref for ref in reference_arxiv_ids if ref and ref in distinct_corpus and ref != arxiv_id
+            ]
             citation_graph[arxiv_id] = clean_references
         except Exception as e:
-            logger.error(f"Failed to fetch citations for {arxiv_id}: {e}")
+            logger.error("Failed to fetch citations for %s: %s", arxiv_id, e)
             continue
 
     # Final safety check before graph construction
@@ -37,20 +51,25 @@ def build_graph(corpus_ids: list[str]) -> nx.DiGraph:
         logger.error("Citation graph is empty. Returning empty graph.")
         return nx.DiGraph()
 
+    logger.info("Constructed a directed graph")
     return nx.from_dict_of_lists(citation_graph, create_using=nx.DiGraph)
 
 
 def save_graph(graph: nx.DiGraph, path: Path) -> None:
     # Save
-    with open(path, 'wb') as f:
+    with open(path, "wb") as f:
         pickle.dump(graph, f)
 
+
 def load_graph(path: Path) -> nx.DiGraph:
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         G_loaded = pickle.load(f)
     return G_loaded
 
-def get_neighbors(graph: nx.DiGraph, paper_id: str, direction: str, depth: int) -> list[str]:
+
+def get_neighbors(
+    graph: nx.DiGraph, paper_id: str, direction: str, depth: int
+) -> list[str]:
     """Get neighboring papers in the citation graph.
 
     Args:
@@ -65,9 +84,40 @@ def get_neighbors(graph: nx.DiGraph, paper_id: str, direction: str, depth: int) 
     if direction == "outbound":
         neighbors = nx.single_source_shortest_path_length(graph, paper_id, cutoff=depth)
     elif direction == "inbound":
-        neighbors = nx.single_source_shortest_path_length(graph.reverse(), paper_id, cutoff=depth)
+        neighbors = nx.single_source_shortest_path_length(
+            graph.reverse(), paper_id, cutoff=depth
+        )
     else:
         raise ValueError("Direction must be 'inbound' or 'outbound'.")
 
     # Exclude the original paper_id and return only neighbors
     return [nid for nid in neighbors if nid != paper_id]
+
+
+def main():
+    # get the arxiv ids
+    project_root = find_project_root()
+    # read the papers.jsonl
+    papers_path = project_root / "data" / "processed" / "parsed_papers.jsonl"
+
+    logger.info("Loading corpus paper IDs from %s", papers_path)
+    with open(papers_path, "r") as f:
+        papers = [json.loads(line) for line in f]
+    arxiv_ids = [p["paper"]["paper_id"] for p in papers]
+    arxiv_ids = [
+        aid.split("v")[0] for aid in arxiv_ids
+    ]  # normalise by removing version suffix
+
+    graph_output_path = project_root / "artifacts" / "citation_graph.pkl"
+    graph_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Building citation graph for %d papers...", len(arxiv_ids))
+    citation_graph = build_graph(arxiv_ids)
+
+    logger.info("Saving citation graph to %s", graph_output_path)
+    save_graph(citation_graph, graph_output_path)
+    logger.info("Citation graph saved successfully.")
+
+
+if __name__ == "__main__":
+    main()

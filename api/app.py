@@ -1,3 +1,4 @@
+from cmath import phase
 from contextlib import asynccontextmanager
 import logging
 from datetime import datetime
@@ -12,14 +13,13 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 
 from .retriever import RetrieverService
-from .models import SearchRequest, SearchResult, RAGRequest
+from .models import SearchRequest,  RAGRequest
 from researchmind.ingestion.models import RAGResponse
 from researchmind.utils.find_root import find_project_root
 from researchmind.utils.logging import configure_logging_root
 from researchmind.retrieval.chroma_store import ChromaStore
 from researchmind.utils.build_prompt import build_prompt
 from researchmind.ingestion.models import Chunk
-from researchmind.retrieval.rrf import reciprocal_rank_fusion
 
 from dotenv import load_dotenv
 
@@ -48,9 +48,17 @@ async def lifespan(app: FastAPI):
     configure_api_logging()
     logger.info("API startup")
 
+    phase = os.environ.get("INDEX_PHASE", "phase2")
+    logger.info("Loading retriever with index phase: %s", phase)
+
+    artifact_dir = project_root / "artifacts" / "indexes" / phase
+    chunks_path = project_root / "data" / "processed" / "cleaned_semantic_chunks.jsonl"
+    logger.info("Using artifact dir: %s", artifact_dir)
+    logger.info("Using chunks path: %s", chunks_path)
+
     # Load retriever
-    app.state.retriever = RetrieverService(project_root)
-    app.state.retriever.load()
+    app.state.retriever = RetrieverService(project_root, artifact_dir)
+    app.state.retriever.load(chunks_path)
 
     # load chromadb client and collection if needed for RAG
     app.state.chroma_store = ChromaStore(

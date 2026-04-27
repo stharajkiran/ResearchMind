@@ -8,10 +8,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class BaseChunker(ABC):
     @abstractmethod
-    def chunk(self, paper: ParsedPaper) -> list[Chunk]:
-        ...
+    def chunk(self, paper: ParsedPaper) -> list[Chunk]: ...
+
 
 class FixedSizeChunker(BaseChunker):
     def __init__(self, chunk_size: int = 200, overlap: int = 20):
@@ -45,10 +46,12 @@ class FixedSizeChunker(BaseChunker):
                 )
                 start += self.chunk_size - self.overlap
         return chunks
-       
+
+
 def _split_sentences(text: str) -> list[str]:
     # split on ". ", "? ", "! " — simple, no nltk needed
-    return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+
 
 class SemanticChunker(BaseChunker):
     def __init__(self, chunk_size: int = 150, overlap: int = 20):
@@ -56,6 +59,16 @@ class SemanticChunker(BaseChunker):
         self.overlap = overlap
 
     def chunk(self, paper: ParsedPaper) -> list[Chunk]:
+        """
+        Chunk paper sections into semantically coherent pieces based on sentence boundaries, with a target chunk size and overlap.
+        Args:            paper: ParsedPaper object containing the paper metadata and sections to chunk.
+        Returns:            List of Chunk objects representing the chunked sections of the paper.
+
+        The chunking process iterates through each section of the paper, splits the text into sentences, and
+          accumulates sentences into chunks until the target chunk size is reached. When a chunk is emitted, 
+          the next chunk starts with an overlap of sentences from the previous chunk to maintain context.
+        """
+
         sections = paper.sections
         chunks = []
         for section_name, text in sections.items():
@@ -83,7 +96,7 @@ class SemanticChunker(BaseChunker):
                     chunk_word_count = sentence_word_count
                     chunk_text = sentence
                     continue
-                # track of words in current chunk 
+                # track of words in current chunk
                 chunk_word_count += sentence_word_count
                 # add sentence to current chunk text
                 chunk_text += " " + sentence
@@ -105,17 +118,19 @@ class SemanticChunker(BaseChunker):
                 )
 
         return chunks
-    
-def chunk_papers(chunker: BaseChunker, parsed_papers_path: Path, output_path: Path) -> tuple[int, int]:
+
+
+def chunk_papers(
+    chunker: BaseChunker, parsed_papers_path: Path, output_path: Path
+) -> tuple[int, int]:
     """Read ParsedPapers from JSONL, chunk them, and write Chunks to new JSONL.
-    
+
     Returns (chunks written, papers failed) for logging."""
-    
-    
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     # Read parsed papers from JSONL file
     with open(parsed_papers_path, "r") as f:
-        parsed_papers = [json.loads(line) for line in f]   
+        parsed_papers = [json.loads(line) for line in f]
 
     # paper is dictionary with keys "paper" (RawPaper fields) and "sections"
     failed_papers = 0
@@ -131,23 +146,33 @@ def chunk_papers(chunker: BaseChunker, parsed_papers_path: Path, output_path: Pa
             # list of Chunk objects
             chunks = chunker.chunk(parsed_paper)
             # saves chunks to output_path as JSONL, one chunk per line
-            
+
             for chunk in chunks:
                 handle.write(json.dumps(chunk.model_dump(mode="json")) + "\n")
-            
+
             if n % 100 == 0:
-                logger.info(f"success: {n - failed_papers} chunks written, {failed_papers} papers failed so far")
+                logger.info(
+                    f"success: {n - failed_papers} chunks written, {failed_papers} papers failed so far"
+                )
 
     return len(parsed_papers) - failed_papers, failed_papers
 
+
 def main():
     parsed_papers_path = Path("data/processed/parsed_papers.jsonl")
-    output_path = Path("data/processed/chunks.jsonl")
-    chunker = FixedSizeChunker(chunk_size=200, overlap=20)
-    chunks_written, papers_failed = chunk_papers(chunker, parsed_papers_path, output_path)
-    logger.info(f"Chunking complete: {chunks_written} chunks written, {papers_failed} papers failed")
+    output_path = Path("data/processed/semantic_chunks.jsonl")
+    chunker = SemanticChunker(chunk_size=200, overlap=20)
+    chunks_written, papers_failed = chunk_papers(
+        chunker, parsed_papers_path, output_path
+    )
+    logger.info(
+        f"Chunking complete: {chunks_written} chunks written, {papers_failed} papers failed"
+    )
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     main()

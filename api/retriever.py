@@ -14,14 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 class RetrieverService:
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, artifact_dir: Path | None = None):
         logger.info("Initializing Retriever service...")
         self.project_root = project_root
         # INDEX_PHASE env var selects which artifact dir to load.
         # Defaults to root (Phase 1 backward compat). Set INDEX_PHASE=phase2 for combined corpus.
-        self.artifact_dir = self.project_root / "artifacts" / "indexes" / "phase2"
+        # self.artifact_dir = self.project_root / "artifacts" / "indexes" / "phase2"
+        self.artifact_dir = artifact_dir
 
-    def load(self) -> None:
+    def load(self, chunks_path:Path) -> None:
+        """Load the retriever components from disk.
+        This includes:
+        - Loading the encoder model
+        - Initializing the Faiss and BM25 retrievers
+        - Loading the Faiss and BM25 indexes from disk
+        - Loading the papers metadata into a dictionary for ID to metadata mapping during search
+        
+        Args:
+            chunks_path (Path): The path to the chunks metadata file, used for mapping chunk IDs to their corresponding metadata during search.
+        """
         logger.info("Loading retriever service...")
         # load encoder, faiss index, bm25 index, papers dict
         self.encoder = MPNetEncoder()
@@ -38,11 +49,11 @@ class RetrieverService:
         self.faissRetriver.load_index("HNSW32")
         self.bm25Retriver.load_index()
         # Load papers dict for ID to metadata mapping during search
-        self.chunk_dict = self._load_chunk_dict()
+        self.chunk_dict = self._load_chunk_dict(chunks_path)
 
         logger.info("Retriever service loaded successfully.")
 
-    def _load_chunk_dict(self) -> dict[str, dict]:
+    def _load_chunk_dict(self, chunks_path: Path) -> dict[str, dict]:
         """Load chunk metadata into a dictionary for easy retrieval during search.
 
         Returns a dict mapping chunk_id to chunk metadata.
@@ -56,8 +67,8 @@ class RetrieverService:
             ...
         }
         """
-        processed = self.project_root / "data" / "processed"
-        chunks_path = processed / "cleaned_chunks.jsonl"
+        # processed = self.project_root / "data" / "processed"
+        # chunks_path = processed / "cleaned_chunks.jsonl"
         logger.info("Loading chunks metadata from source: %s", chunks_path)
 
         chunk_dict: dict[str, dict] = {}
