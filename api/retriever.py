@@ -3,12 +3,18 @@ import logging
 import os
 from pathlib import Path
 
+from typing import Optional
 from api.models import SearchResult
 from researchmind.embedding.models import MPNetEncoder
 from researchmind.ingestion.models import Chunk
 from researchmind.retrieval.bm25_index import BM25IndexBuilder
 from researchmind.retrieval.faiss_index import FaissIndexBuilder
 from researchmind.retrieval.rrf import reciprocal_rank_fusion
+from researchmind.retrieval.query_intelligence import QueryTransformer
+from researchmind.retrieval.temporal import apply_recency_decay
+
+from openai import OpenAI
+import ollama
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +28,14 @@ class RetrieverService:
         # self.artifact_dir = self.project_root / "artifacts" / "indexes" / "phase2"
         self.artifact_dir = artifact_dir
 
-    def load(self, chunks_path:Path) -> None:
+    def load(self, chunks_path: Path, model_name:Optional[str] = None) -> None:
         """Load the retriever components from disk.
         This includes:
         - Loading the encoder model
         - Initializing the Faiss and BM25 retrievers
         - Loading the Faiss and BM25 indexes from disk
         - Loading the papers metadata into a dictionary for ID to metadata mapping during search
-        
+
         Args:
             chunks_path (Path): The path to the chunks metadata file, used for mapping chunk IDs to their corresponding metadata during search.
         """
@@ -50,8 +56,18 @@ class RetrieverService:
         self.bm25Retriver.load_index()
         # Load papers dict for ID to metadata mapping during search
         self.chunk_dict = self._load_chunk_dict(chunks_path)
+        # Initialize query transformer
+        ollama_client = ollama.Client()
+        self.query_transformer = QueryTransformer(
+            client=ollama_client, model=model_name
+        )
 
         logger.info("Retriever service loaded successfully.")
+
+    def set_query_transformer_model(self, model_name: str):
+        """Dynamically update the model used for query transformations."""
+        self.query_transformer.set_model(model_name)
+        logger.info("Query transformer model updated to: %s", model_name)
 
     def _load_chunk_dict(self, chunks_path: Path) -> dict[str, dict]:
         """Load chunk metadata into a dictionary for easy retrieval during search.
@@ -82,7 +98,13 @@ class RetrieverService:
         logger.info("Loaded %d chunks into dictionary.", len(chunk_dict))
         return chunk_dict
 
-    def search(self, query: str, k: int = 10) -> list[Chunk]:
+    def search(
+        self,
+        query: str,
+        k: int = 10,
+        mode: str = "standard",
+        recency_decay_rate: float | None = None,
+    ) -> list[Chunk]:
         """Search for relevant chunks given a query.
 
         Args:
@@ -92,13 +114,31 @@ class RetrieverService:
         Returns:
             list[Chunk]: A list of chunks for the top k results.
         """
+        # encode → (rewrite/hyde/no change)-> faiss.search → bm25.search → rrf → map IDs to paper metadata
+        logger.info("--------------------------------")
         logger.info("Received search query: %s", query)
-        # encode → faiss.search → bm25.search → rrf → map IDs to paper metadata
+        # original query for bm25 search, since it doesn't use embeddings
+        bm25_results = self.bm25Retriver.search(query, k=k)
+
+        if mode == "rewrite":
+            logger.info("Applying query rewrite transformation.")
+            query = self.query_transformer.rewrite(query)
+            logger.info("Rewritten query: %s", query)
+        elif mode == "hyde":
+            logger.info("Applying HyDE query transformation.")
+            query = self.query_transformer.hyde(query)
+            logger.info("HyDE-generated abstract: %s", query)
+        else:
+            logger.info("Using standard query without transformation.")
+        # transformed or original query for faiss search
         q_embedding = self.encoder.encode([query])
         faiss_results = self.faissRetriver.search(q_embedding, k=k)
-        bm25_results = self.bm25Retriver.search(query, k=k)
         # final chunk ids after fusion
         rrf_results = reciprocal_rank_fusion(faiss_results, bm25_results)[:k]
+        if recency_decay_rate is not None:
+            rrf_results = apply_recency_decay(
+                rrf_results, self.chunk_dict, recency_decay_rate
+            )
         # map paper IDs to metadata
         # convert each dict into SearchResult model
         search_results = [
@@ -106,6 +146,6 @@ class RetrieverService:
             for chunk_id in rrf_results
             if chunk_id in self.chunk_dict
         ]
-        logger.info("Search results retrieved successfully for query")
+        logger.info("*****Search results retrieved successfully for query******")
 
         return search_results

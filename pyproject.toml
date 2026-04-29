@@ -55,6 +55,7 @@ dependencies = [
     "pymupdf>=1.27.2.2",
     "ragas>=0.4.3",
     "pyvis>=0.3.2",
+    "ollama>=0.6.1",
 ]
 
 [project.optional-dependencies]
@@ -65,7 +66,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/researchmind"]
+packages = ["src/researchmind","api"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

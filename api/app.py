@@ -1,4 +1,3 @@
-from cmath import phase
 from contextlib import asynccontextmanager
 import logging
 from datetime import datetime
@@ -35,30 +34,40 @@ client = instructor.from_anthropic(
     Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 )
 
+class Config:
+    " Configuration for API, including logging and any other global setup."
+    phase = os.environ.get("INDEX_PHASE", "phase2")
+    artifact_dir = project_root / "artifacts" / "indexes" / phase
+    if phase == "semantic":
+        chunks_path = project_root / "data" / "processed" / "cleaned_semantic_chunks.jsonl"
+    else:
+        chunks_path = project_root / "data" / "processed" / "cleaned_chunks.jsonl"
 
-def configure_api_logging():
+    # model_name = "claude-sonnet-4-6"
+    model_name = "qwen3.6:27b"
     logs_dir = project_root / "logs" / "api"
     log_path = logs_dir / f"api_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    configure_logging_root(log_path)
 
+
+def configure_api_logging():
+    logs_dir = Config.logs_dir
+    log_path = Config.log_path
+    if not logs_dir.exists():
+        logs_dir.mkdir(parents=True, exist_ok=True)
+    configure_logging_root(log_path)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Configure logging once at startup
     configure_api_logging()
     logger.info("API startup")
-
-    phase = os.environ.get("INDEX_PHASE", "phase2")
-    logger.info("Loading retriever with index phase: %s", phase)
-
-    artifact_dir = project_root / "artifacts" / "indexes" / phase
-    chunks_path = project_root / "data" / "processed" / "cleaned_semantic_chunks.jsonl"
-    logger.info("Using artifact dir: %s", artifact_dir)
-    logger.info("Using chunks path: %s", chunks_path)
+    logger.info("Loading retriever with index phase: %s", Config.phase)
+    logger.info("Using artifact dir: %s", Config.artifact_dir)
+    logger.info("Using chunks path: %s", Config.chunks_path)
 
     # Load retriever
-    app.state.retriever = RetrieverService(project_root, artifact_dir)
-    app.state.retriever.load(chunks_path)
+    app.state.retriever = RetrieverService(project_root, Config.artifact_dir)
+    app.state.retriever.load(Config.chunks_path, Config.model_name)
 
     # load chromadb client and collection if needed for RAG
     app.state.chroma_store = ChromaStore(
@@ -100,7 +109,7 @@ def search(req: SearchRequest, request: Request) -> list[Chunk]:
     try:
         logger.info("Received search request: %s", req.query)
         retriever = request.app.state.retriever
-        results = retriever.search(req.query, req.k)
+        results = retriever.search(req.query, req.k, mode=req.retrieval_mode, recency_decay_rate=req.recency_decay)
         logger.info("Search completed successfully for query")
         return results
     except Exception:
@@ -122,7 +131,7 @@ def rag(req: RAGRequest, request: Request) -> RAGResponse:
     try:
         logger.info("Received RAG query: %s", req.query)
         # lis of chunks from retriever search: RFF(faiss + bm25)
-        bm25_faiss_chunks = request.app.state.retriever.search(req.query, k=5)
+        bm25_faiss_chunks = request.app.state.retriever.search(req.query, k=5, mode = req.retrieval_mode , recency_decay_rate = req.recency_decay)
         # extract chunk texts for context in RAGAS
         contexts = [c.text for c in bm25_faiss_chunks]
 
@@ -135,7 +144,7 @@ def rag(req: RAGRequest, request: Request) -> RAGResponse:
             "Constructed system prompt and content for RAG query. Sending to Anthropic API..."
         )
         response = client.chat.completions.create(
-            model="claude-sonnet-4-6",
+            model= Config.model_name,
             system=SYSTEM_PROMPT,
             response_model=RAGResponse,
             messages=[{"role": "user", "content": content}],

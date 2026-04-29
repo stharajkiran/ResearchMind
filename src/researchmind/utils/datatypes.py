@@ -30,3 +30,5 @@ class RetrieverMetrics:
         elif q["category"] == "technical":
             self.technical_found += found
             self.technical_count += 1
+
+

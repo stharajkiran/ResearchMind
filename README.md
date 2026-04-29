@@ -12,13 +12,29 @@ This project is my attempt to build the full stack properly: multi-source retrie
 
 ---
 
-## Current Status — Phase 1 Complete
+## Current Status — Phase 2 Complete
+
+Phase 2 delivers a full RAG pipeline on top of the Phase 1 search engine, evaluated against a 200-query benchmark across 5 query categories.
+
+**What's built:**
+- Full-text PDF ingestion: 1989 papers downloaded, section-aware parsing, 113k fixed-size chunks
+- Section normalization: canonical section labels (method, result, experiment, etc.)
+- Hybrid retrieval: FAISS+BM25 RRF for corpus retrieval, ChromaDB for user uploads
+- RAG synthesis endpoint (`POST /rag`): Claude Sonnet with structured output via instructor
+- 200-query test set: 40 queries × 5 categories, synthetic ground truth via Claude Haiku
+- RAGAS evaluation harness: batched evaluation, MLflow logging per category
+- Citation graph: NetworkX directed graph on OpenAlex data (1989 nodes, 26 edges)
+- Chunking A/B: fixed-size vs semantic chunking benchmarked on RAGAS
+
+---
+
+## Phase 1 — Hybrid Search Engine
 
 Phase 1 delivers a fully benchmarked hybrid search engine serving real arXiv papers over a production API.
 
 **What's built:**
 - arXiv ingestion pipeline with rate limiting and JSONL storage
-- Three embedding models benchmarked — BGE selected on throughput + recall data
+- Three embedding models benchmarked — MPNet selected on recall data
 - Three FAISS index types benchmarked — HNSW32 selected on latency + recall data
 - Hybrid BM25 + dense retrieval with Reciprocal Rank Fusion
 - FastAPI `/search` endpoint with Prometheus metrics and structured logging
@@ -74,6 +90,19 @@ All three hit 100% technical recall — BM25 handles exact term matching. RRF ma
 | p99 | 2,100ms* |
 
 *p99 spike is encoder cold-start on first inference, not sustained degradation.
+
+### Chunking A/B — fixed-size vs semantic (Phase 2)
+
+200-query test set across 5 categories. Evaluated with Claude Haiku as judge, MPNet embeddings.
+
+| Metric | Fixed | Semantic | Winner |
+|---|---|---|---|
+| Faithfulness | 0.775 | 0.772 | Fixed |
+| Answer Relevancy | 0.848 | 0.843 | Fixed |
+| Context Precision | 0.467 | 0.429 | Fixed |
+| Context Recall | 0.598 | 0.561 | Fixed |
+
+Fixed-size chunking is the production baseline. Semantic chunking improves Gap Detection context recall (+0.064) but degrades context precision across other categories due to uncapped chunk sizes (some >400 words). Semantic chunking with a 250-word cap is the planned Phase 6 improvement.
 
 ---
 
