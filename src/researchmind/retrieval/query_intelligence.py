@@ -1,5 +1,4 @@
-from openai import OpenAI
-from  ollama import Client
+from researchmind.utils.llm_client import ResearchMindLLM
 
 # HyDE: Gao et al. 2022 — "Precise Zero-Shot Dense Retrieval without Relevance Labels"
 # Original evaluation domain is arXiv/BEIR, which matches this corpus exactly.
@@ -39,31 +38,22 @@ class QueryTransformer:
       (Gao et al. 2022, original arXiv evaluation domain)
     """
 
-    def __init__(self, client:Client, model: str = None):
-        self._client = client
-        self._model = model
+    def __init__(self):
+        self._client = ResearchMindLLM()
 
-    def set_model(self, model: str):
-        """Dynamically update the model used for transformations."""
-        self._model = model
-
-    def _call(self, prompt: str) -> str:
+    def _call(self, prompt: str, tier: str) -> str:
         # use Ollama client
-        response = self._client.chat(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            options={
-                'num_predict': 512, 
-                "num_ctx": 1024
-                },
-            think=False,
-            keep_alive=-1,  # keep loaded for 30 minutes
+        response = self._client.complete(
+            user_prompt=prompt,
+            tier=tier,  # maps to the LLM used for this tier
+            max_tokens=512,
+            temperature=0.0,  # deterministic output
         )
-        return response.message.content.strip()
+        return response.strip()
 
     def rewrite(self, query: str) -> str:
-        return self._call(_REWRITE_PROMPT.format(query=query))
+        return self._call(_REWRITE_PROMPT.format(query=query), tier="fast")
 
     def hyde(self, query: str) -> str:
         """Return a hypothetical abstract that would answer the query (Gao et al. 2022)."""
-        return self._call(_HYDE_PROMPT.format(query=query))
+        return self._call(_HYDE_PROMPT.format(query=query), tier="medium")

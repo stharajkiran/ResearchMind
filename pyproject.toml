@@ -56,6 +56,10 @@ dependencies = [
     "ragas>=0.4.3",
     "pyvis>=0.3.2",
     "ollama>=0.6.1",
+    "instructor>=1.15.1",
+    "langsmith>=0.7.33",
+    "langgraph>=1.1.8",
+    "openai>=2.32.0",
 ]
 
 [project.optional-dependencies]

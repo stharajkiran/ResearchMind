@@ -67,9 +67,12 @@ class ChromaStore:
             metadatas=metadatas,
         )
 
-    def query_collection(self, query: str, n_results: int = 10) -> list[Chunk]:
+    def query_collection(self, query: str, n_results: int = 10, where: dict | None = None) -> list[Chunk]:
         # results is QueryResult type
-        results = self.corpus_collection.query(query_texts=[query], n_results=n_results)
+        kwargs = {"query_texts": [query], "n_results": n_results}
+        if where:
+            kwargs["where"] = where
+        results = self.corpus_collection.query(**kwargs)
 
         # each query in the query_texts list will have a corresponding list of results in results["documents"]
         retrieved_chunks = []

@@ -10,7 +10,7 @@ import mlflow
 from researchmind.retrieval.retriever import RetrieverService
 from researchmind.evaluation.test_set_generator import TestQuery
 from researchmind.utils.find_root import find_project_root
-from researchmind.utils.logging import configure_logging, configure_logging_root
+from researchmind.utils.logging import configure_logging_root
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -41,75 +41,6 @@ def cleanup_vram():
 
     except Exception as e:
         print(f"⚠️ Cleanup failed: {e}")
-
-
-def run_benchmark(
-    mode: str,
-    retriever: RetrieverService,
-    queries: list[TestQuery],
-    experiment_name: str = Config.experiment_name,
-    recency_decay_rate: float | None = None,
-) -> dict:
-    mlflow.set_experiment(experiment_name)
-    with mlflow.start_run(run_name=mode):
-        logger.info(
-            "Started benchmark run for mode=%s decay=%s", mode, recency_decay_rate
-        )
-        mlflow.log_param("mode", mode)
-        mlflow.log_param("recency_decay_rate", recency_decay_rate)
-
-        category_indices = defaultdict(list)
-        for i, query in enumerate(queries):
-            category_indices[query.category].append(i)
-
-        total_queries = sum(len(v) for v in category_indices.values())
-        category_recalls = {}
-        # track progress with nested tqdm: outer for categories
-        outer = tqdm(
-            category_indices.items(),
-            desc=f"[{mode}] categories",
-            unit="cat",
-            total=len(category_indices),
-        )
-        # out of all queries
-        query_counter = tqdm(
-            total=total_queries, desc="  queries", unit="q", leave=False
-        )
-
-        for cat, indices in outer:  # each category and its query indices
-            cat_queries = [queries[i] for i in indices]
-            recalls = []
-            for query in cat_queries:
-                try:
-                    search_results = retriever.search(
-                        query.question,
-                        k=10,
-                        mode=mode,
-                        recency_decay_rate=recency_decay_rate,
-                    )
-                    topk_ids = [r.chunk_id for r in search_results]
-                    recalls.append(float(query.chunk_id in topk_ids))
-                except Exception as e:
-                    logger.warning(
-                        "Search failed for query '%s': %s", query.question[:50], e
-                    )
-                    recalls.append(0.0)
-                query_counter.update(1)
-                query_counter.set_postfix({"running": f"{np.mean(recalls):.3f}"})
-
-            category_recalls[cat] = float(np.mean(recalls))
-            mlflow.log_metric(f"{cat}_recall", category_recalls[cat])
-            outer.set_postfix({cat: f"{category_recalls[cat]:.3f}"})
-            logger.info("Category '%s' recall@10: %.3f", cat, category_recalls[cat])
-
-        query_counter.close()
-        outer.close()
-
-        overall = float(np.mean(list(category_recalls.values())))
-        mlflow.log_metric("overall_recall", overall)
-        logger.info("Overall recall@10: %.3f", overall)
-
-    return category_recalls
 
 
 def temporal_run(
@@ -155,7 +86,7 @@ def temporal_run(
 
 
 if __name__ == "__main__":
-    logger.info("Starting Phase 3 Evaluation...")
+    logger.info("Starting temporal Evaluation...")
     Config.logs_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Logs directory ensured at %s", Config.logs_dir)
     session_log_path = (
@@ -190,22 +121,15 @@ if __name__ == "__main__":
         raise SystemExit(1)
     logger.info("Retriever ready.")
 
-    # Mode A/B: standard vs rewrite vs hyde on all 200 queries
-    modes = ["rewrite", "standard", "hyde"]
-    for mode in tqdm(modes, desc="Benchmark modes", unit="mode"):
-        logger.info("Running benchmark: mode=%s", mode)
-        metrics = run_benchmark(mode, retriever, queries)
-        logger.info("Completed benchmark for mode=%s. Metrics: %s", mode, metrics)
-
     logger.info("Running temporal A/B test with and without recency decay...")
     # Temporal A/B: standard with vs without recency decay on 40 temporal queries
-    temporal_run("temporal_no_decay", retriever, queries, recency_decay_rate=None)
     temporal_run(
         "temporal_with_decay",
         retriever,
         queries,
         recency_decay_rate=Config.decay_factor,
     )
+    temporal_run("temporal_no_decay", retriever, queries, recency_decay_rate=None)
 
     # Register this function to run when the script/kernel exits
     cleanup_vram()

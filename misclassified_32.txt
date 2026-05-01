@@ -1,0 +1,17 @@
+Query: Identify references to the YOLOv3 paper in object detection benchmarks.
+True Intent: citation
+Predicted Intent: search
+
+Query: State-of-the-art results for natural language inference tasks
+True Intent: recent
+Predicted Intent: search
+
+
+Query: Which theoretical limitations hinder the scalability of reinforcement learning algorithms in continuous control tasks?
+True Intent: gap_detection
+Predicted Intent: search
+
+
+Query: What are the known failure modes of large language models when applied to low-resource languages?
+True Intent: gap_detection
+Predicted Intent: search

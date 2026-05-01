@@ -117,8 +117,15 @@ def evaluate_ragas(dataset: Dataset, batch_size: int) -> dict[str, float]:
             logger.error("Batch %d failed: %s", i // batch_size, e)
 
     combined = pd.concat(results, ignore_index=True)
-    METRIC_NAMES = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
-    return {col: combined[col].tolist() for col in METRIC_NAMES if col in combined.columns}
+    METRIC_NAMES = [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall",
+    ]
+    return {
+        col: combined[col].tolist() for col in METRIC_NAMES if col in combined.columns
+    }
 
 
 def main(args: argparse.Namespace):
@@ -185,7 +192,9 @@ def main(args: argparse.Namespace):
     # evaluate per category
     logger.info("Evaluating RAGAS metrics for each category...")
     with mlflow.start_run(run_name="RAGAS_Evaluation_semantic") as run:
-        for category, indices in tqdm(category_indices.items(), desc="Evaluating categories", unit="category"):
+        for category, indices in tqdm(
+            category_indices.items(), desc="Evaluating categories", unit="category"
+        ):
             cat_queries = [queries[i] for i in indices]
             cat_responses = [responses[i] for i in indices]
             cat_dataset = build_ragas_dataset(cat_queries, cat_responses)
@@ -260,7 +269,8 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logs_dir = args.root_dir / "logs" / "ragas_evaluation"
     session_log_path = (
-        logs_dir / f"session_{args.experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        logs_dir
+        / f"session_{args.experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     )
     configure_logging(session_log_path, logger)
 
