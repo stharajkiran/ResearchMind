@@ -136,6 +136,14 @@ class RetrieverService(VectorStore):
             if c["paper_id"] in set(paper_ids)
         ]
 
+    @property
+    def corpus_paper_ids(self) -> set[str]:
+        return {chunk["paper_id"] for chunk in self._chunk_dict.values()}
+
+    @property
+    def encoder(self) -> MPNetEncoder:
+        return self._encoder
+
     def search(
         self,
         query: str,
@@ -159,8 +167,6 @@ class RetrieverService(VectorStore):
         if not hasattr(self, "_encoder"):
             raise RuntimeError("RetrieverService.load() must be called before search()")
         # encode → (rewrite/hyde/no change)-> faiss.search → bm25.search → rrf → map IDs to paper metadata
-        logger.info("--------------------------------")
-        logger.info("Received search query: %s", query)
 
         if filters:
             return self._chroma.query_collection(query, k, where=filters)
@@ -176,7 +182,7 @@ class RetrieverService(VectorStore):
             query = self._query_transformer.hyde(query)
             logger.info("HyDE-generated abstract: %s", query)
         else:
-            logger.info("Using standard query without transformation.")
+            pass  # no transformation for "standard" mode
         # transformed or original query for faiss search
         q_embedding = self._encoder.encode([query])
         faiss_results = self._faissRetriver.search(q_embedding, k=k)
@@ -193,6 +199,5 @@ class RetrieverService(VectorStore):
             for chunk_id in rrf_results
             if chunk_id in self._chunk_dict
         ]
-        logger.info("*****Search results retrieved successfully for query******")
 
         return search_results

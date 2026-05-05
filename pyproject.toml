@@ -60,6 +60,7 @@ dependencies = [
     "langsmith>=0.7.33",
     "langgraph>=1.1.8",
     "openai>=2.32.0",
+    "mcp>=1.27.0",
 ]
 
 [project.optional-dependencies]

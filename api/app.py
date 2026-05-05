@@ -21,6 +21,7 @@ from researchmind.utils.llm_client import ResearchMindLLM
 from researchmind.agent.graph import build_graph
 from researchmind.agent.tracing import configure_tracing
 from researchmind.graph.citation_graph import load_graph
+from researchmind.guardrails.pipeline import ValidatorPipeline
 
 from dotenv import load_dotenv
 
@@ -84,10 +85,15 @@ async def lifespan(app: FastAPI):
 
     configure_tracing()
     citation_graph = load_graph(project_root / "artifacts" / "citation_graph.pkl")
+    pipeline = ValidatorPipeline(
+        app.state.retriever.corpus_paper_ids, 
+        app.state.retriever.encoder
+    )
     app.state.agent = build_graph(
         retriever=app.state.retriever,
         llm=client,  # the ResearchMindLLM already created
         citation_graph=citation_graph,
+        pipeline=pipeline,
     )
 
     yield

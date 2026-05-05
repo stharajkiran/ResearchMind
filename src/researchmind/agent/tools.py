@@ -7,6 +7,7 @@ from researchmind.ingestion.models import (
     ResearchGapResponse,
 )
 from researchmind.retrieval.retriever import RetrieverService
+from researchmind.guardrails.pipeline import ValidatorPipeline
 import networkx as nx
 from itertools import chain
 from researchmind.ingestion.models import Chunk
@@ -24,7 +25,9 @@ from .agent_utils import (
     COMPARE_METHODOLOGIES_PROMPT,
     classify_citation_direction,
 )
+import logging
 
+logger = logging.getLogger("agent_tools")
 
 class SubjectList(BaseModel):
     subjects: list[str] = Field(
@@ -93,7 +96,9 @@ def trace_citation_graph(
 
 
 @traceable
-def synthesise_answer(state: AgentState, llm: ResearchMindLLM) -> dict:
+def synthesise_answer(
+    state: AgentState, llm: ResearchMindLLM, pipeline: ValidatorPipeline
+) -> dict:
     # Placeholder for answer synthesis logic
     query = state["query"]
     if state.get("compared_chunks"):
@@ -114,9 +119,31 @@ def synthesise_answer(state: AgentState, llm: ResearchMindLLM) -> dict:
         max_tokens=max_tokens,
         temperature=0.0,
     )
+    pipeline_result = pipeline.run(
+        response=response, chunks=state.get("retrieved_chunks", [])
+    )
+    logger.info("Cited sources: %s", response.sources)
+    if pipeline_result.blocked:
+        raise ValueError(
+            "Response failed validation checks: "
+            + "; ".join(
+                f"{v.validator}: {'PASSED' if v.passed else 'FAILED'}"
+                for v in pipeline_result.results
+            )
+        )
+    if pipeline_result.redacted_text:
+        if isinstance(response, RAGResponse):
+            response = response.model_copy(
+                update={"response": pipeline_result.redacted_text}
+            )
+        elif isinstance(response, ComparisonRAGResponse):
+            response = response.model_copy(
+                update={"comparison": pipeline_result.redacted_text}
+            )
     return {
         "final_answer": response,
         "tool_call_history": state["tool_call_history"] + ["synthesise_answer"],
+        "validation_result": pipeline_result,
     }
 
 
@@ -133,6 +160,8 @@ def compare_methodologies(
         max_tokens=512,
         temperature=0.0,
     )
+    if not subjects.subjects:
+        raise ValueError("Subject extraction returned empty list — cannot compare.")
     subjects = subjects.subjects
     try:
         k = max(5, 20 // len(subjects))
@@ -143,6 +172,8 @@ def compare_methodologies(
     for subject in subjects:
         compared_chunks[subject] = retriever.search(subject, k=k)
 
+    if not any(compared_chunks.values()):
+        raise ValueError("No chunks retrieved for any subject.")
     return {
         "compared_chunks": compared_chunks,
         "retrieved_chunks": list(chain.from_iterable(compared_chunks.values())),
@@ -152,7 +183,10 @@ def compare_methodologies(
 
 @traceable
 def detect_research_gaps(
-    state: AgentState, retriever: RetrieverService, llm: ResearchMindLLM
+    state: AgentState,
+    retriever: RetrieverService,
+    llm: ResearchMindLLM,
+    pipeline: ValidatorPipeline,
 ) -> dict:
     # Placeholder for research gap detection logic
     query = state["query"]
@@ -168,10 +202,20 @@ def detect_research_gaps(
         temperature=0.0,
     )
 
+    pipeline_result = pipeline.run(response=response, chunks=retrieved_chunks)
+    if pipeline_result.blocked:
+        raise ValueError(
+            "Response failed validation checks: "
+            + "; ".join(
+                f"{v.validator}: {'PASSED' if v.passed else 'FAILED'}"
+                for v in pipeline_result.results
+            )
+        )
     return {
         "retrieved_chunks": retrieved_chunks,
         "final_answer": response,
         "tool_call_history": state["tool_call_history"] + ["detect_research_gaps"],
+        "validation_result": pipeline_result,
     }
 
 

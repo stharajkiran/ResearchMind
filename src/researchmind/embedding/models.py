@@ -16,13 +16,13 @@ class BaseResearchEncoder:
         self.dim = self.model.get_embedding_dimension()
         self.model_name = model_name
 
-    def encode(self, texts: list[str], convert_to_numpy: bool = True, batch_size: int = 32) -> np.ndarray:
+    def encode(self, texts: list[str], convert_to_numpy: bool = True, batch_size: int = 32, normalize_embeddings: bool = True) -> np.ndarray:
         """Standardized encoding method for all child classes."""
         return self.model.encode(
             texts,
             convert_to_numpy=convert_to_numpy,
-            show_progress_bar=True,
-            normalize_embeddings=True,  # Best practice for RAG/Cosine Similarity
+            show_progress_bar=False,
+            normalize_embeddings=normalize_embeddings,  # Best practice for RAG/Cosine Similarity
             batch_size=batch_size,
         )
 
