@@ -14,7 +14,6 @@ from researchmind.ingestion.models import (
     ResearchGapResponse,
 )
 
-
 class ValidatorPipeline:
 
     def __init__(

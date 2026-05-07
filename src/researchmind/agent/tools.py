@@ -1,6 +1,7 @@
 from langsmith import traceable
 
 from researchmind.agent.state import AgentState
+from researchmind.feedback.store import FeedbackStore
 from researchmind.ingestion.models import (
     ComparisonRAGResponse,
     RAGResponse,
@@ -12,6 +13,8 @@ import networkx as nx
 from itertools import chain
 from researchmind.ingestion.models import Chunk
 
+from researchmind.session.cache import QueryCache
+from researchmind.session.memory import SessionMemory
 from researchmind.utils.llm_client import ResearchMindLLM
 from researchmind.graph.citation_graph import get_neighbors
 from researchmind.utils.build_prompt import (
@@ -28,6 +31,7 @@ from .agent_utils import (
 import logging
 
 logger = logging.getLogger("agent_tools")
+
 
 class SubjectList(BaseModel):
     subjects: list[str] = Field(
@@ -97,10 +101,24 @@ def trace_citation_graph(
 
 @traceable
 def synthesise_answer(
-    state: AgentState, llm: ResearchMindLLM, pipeline: ValidatorPipeline
+    state: AgentState,
+    llm: ResearchMindLLM,
+    pipeline: ValidatorPipeline,
+    store: FeedbackStore,
+    session_memory: SessionMemory,
+    query_cache: QueryCache,
 ) -> dict:
     # Placeholder for answer synthesis logic
     query = state["query"]
+    # check the redis cache
+    if cached_answer := query_cache.get(query):
+        return {
+            "final_answer": cached_answer,
+            "tool_call_history": state["tool_call_history"] + ["synthesise_answer"],
+            "validation_result": None,
+            "feedback_id": None,
+        }
+    # Comparison RAG
     if state.get("compared_chunks"):
         compared_chunks = state["compared_chunks"]
         SYSTEM_PROMPT, content = build_comparison_prompt(query, compared_chunks)
@@ -124,7 +142,7 @@ def synthesise_answer(
     )
     logger.info("Cited sources: %s", response.sources)
     if pipeline_result.blocked:
-        raise ValueError(
+        logger.warning(
             "Response failed validation checks: "
             + "; ".join(
                 f"{v.validator}: {'PASSED' if v.passed else 'FAILED'}"
@@ -140,10 +158,53 @@ def synthesise_answer(
             response = response.model_copy(
                 update={"comparison": pipeline_result.redacted_text}
             )
+
+    hallucination_score = next(
+        (
+            r.score
+            for r in pipeline_result.results
+            if r.validator == "HallucinationScoreValidator"
+        ),
+        None,
+    )
+    citation_score = next(
+        (
+            r.score
+            for r in pipeline_result.results
+            if r.validator == "CitationGroundingValidator"
+        ),
+        None,
+    )
+    session_id = state.get("session_id", "unknown_session")
+    feedback_id = store.save_feedback(
+        session_id=session_id,
+        query=query,
+        intent=state.get("intent", ""),
+        answer_json=response.model_dump(),
+        hallucination_score=hallucination_score,
+        citation_grounding_score=citation_score,
+        validation_passed=pipeline_result.overall_passed,
+        validator_results=[v.model_dump() for v in pipeline_result.results],
+        retrieved_paper_ids=[
+            c.paper_id for c in state.get("retrieved_chunks", [])
+        ],  # type: ignore
+        retrieved_chunk_ids=[c.chunk_id for c in state.get("retrieved_chunks", [])],  # type: ignore
+        rating=None,
+    )
+    # save to redis cache
+    query_cache.set(query, response.model_dump())
+    # save relevant info to session memory for potential future use
+    session_memory.save(
+        session_id,
+        state.get("retrieved_chunks", []),
+        response,
+    )
+
     return {
         "final_answer": response,
         "tool_call_history": state["tool_call_history"] + ["synthesise_answer"],
         "validation_result": pipeline_result,
+        "feedback_id": feedback_id,
     }
 
 
@@ -187,6 +248,7 @@ def detect_research_gaps(
     retriever: RetrieverService,
     llm: ResearchMindLLM,
     pipeline: ValidatorPipeline,
+    store: FeedbackStore,
 ) -> dict:
     # Placeholder for research gap detection logic
     query = state["query"]
@@ -204,22 +266,60 @@ def detect_research_gaps(
 
     pipeline_result = pipeline.run(response=response, chunks=retrieved_chunks)
     if pipeline_result.blocked:
-        raise ValueError(
+        logger.warning(
             "Response failed validation checks: "
             + "; ".join(
                 f"{v.validator}: {'PASSED' if v.passed else 'FAILED'}"
                 for v in pipeline_result.results
             )
         )
+    hallucination_score = next(
+        (
+            r.score
+            for r in pipeline_result.results
+            if r.validator == "HallucinationScoreValidator"
+        ),
+        None,
+    )
+    citation_score = next(
+        (
+            r.score
+            for r in pipeline_result.results
+            if r.validator == "CitationGroundingValidator"
+        ),
+        None,
+    )
+    session_id = state.get("session_id", "unknown_session")
+    feedback_id = store.save_feedback(
+        session_id=session_id,
+        query=query,
+        intent=state.get("intent", ""),
+        answer_json=response.model_dump(),
+        hallucination_score=hallucination_score,
+        citation_grounding_score=citation_score,
+        validation_passed=pipeline_result.overall_passed,
+        validator_results=[v.model_dump() for v in pipeline_result.results],
+        retrieved_paper_ids=[c.paper_id for c in retrieved_chunks],
+        retrieved_chunk_ids=[c.chunk_id for c in retrieved_chunks],
+        rating=None,
+    )
     return {
         "retrieved_chunks": retrieved_chunks,
         "final_answer": response,
         "tool_call_history": state["tool_call_history"] + ["detect_research_gaps"],
         "validation_result": pipeline_result,
+        "feedback_id": feedback_id,
     }
 
 
 @traceable
-def read_session_memory(state: AgentState) -> dict:
+def read_session_memory(state: AgentState, session_memory: SessionMemory) -> dict:
     # Redis wired in Phase 6 (Celery + Redis deferred)
-    return {}
+    # get the session ID from state
+    session_id = state.get("session_id", "unknown_session")
+    # read any relevant information from session memory using the session ID as key
+    data = session_memory.load(session_id)
+    if data is None:
+        return {}
+    # return the data as chunks in the expected format to be added to state for use in subsequent steps
+    return {"retrieved_chunks": [Chunk(**c) for c in data["chunks"]]}

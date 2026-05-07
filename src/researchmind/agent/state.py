@@ -17,3 +17,4 @@ class AgentState(TypedDict):
     session_id: str
     final_answer: RAGResponse | ComparisonRAGResponse | ResearchGapResponse | None
     validation_result: PipeLineResult | None
+    feedback_id: int | None

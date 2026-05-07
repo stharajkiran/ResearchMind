@@ -19,7 +19,11 @@ from researchmind.agent.tools import (
 )
 from researchmind.guardrails.pipeline import ValidatorPipeline
 from researchmind.retrieval.retriever import RetrieverService
+from researchmind.session.cache import QueryCache
+from researchmind.session.memory import SessionMemory
 from researchmind.utils.llm_client import ResearchMindLLM
+from researchmind.feedback.store import FeedbackStore
+
 
 
 def build_graph(
@@ -27,11 +31,13 @@ def build_graph(
     llm: ResearchMindLLM,
     citation_graph: nx.DiGraph,
     pipeline: ValidatorPipeline,
+    store: FeedbackStore,
+    session_memory: SessionMemory,
+    query_cache: QueryCache,
 ):
     builder = StateGraph(AgentState)
-
     # add nodes with dependencies bound
-    builder.add_node("read_session_memory", read_session_memory)
+    builder.add_node("read_session_memory", partial(read_session_memory, session_memory=session_memory))
     builder.add_node("route", partial(route, llm=llm))
     builder.add_node("search_corpus", partial(search_corpus, retriever=retriever))
     builder.add_node(
@@ -50,10 +56,10 @@ def build_graph(
     )
     builder.add_node(
         "detect_research_gaps",
-        partial(detect_research_gaps, retriever=retriever, llm=llm, pipeline=pipeline),
+        partial(detect_research_gaps, retriever=retriever, llm=llm, pipeline=pipeline, store=store),
     )
     builder.add_node(
-        "synthesise_answer", partial(synthesise_answer, llm=llm, pipeline=pipeline)
+        "synthesise_answer", partial(synthesise_answer, llm=llm, pipeline=pipeline, store=store, session_memory=session_memory, query_cache=query_cache),
     )
 
     # entry

@@ -92,3 +92,11 @@ def validate_claim(claim: str, paper_ids: list[str]) -> dict:
         "semantic_score": max_score,
         "supported": supported,
     }
+
+@mcp.tool()
+def ingest_paper(paper_url: str) -> dict:
+    """Ingest a new paper into the corpus by arXiv URL."""
+    from worker.tasks import ingest_paper_task
+    # Trigger the asynchronous ingestion task and return the task ID for tracking
+    task = ingest_paper_task.delay(paper_url)
+    return {"task_id": task.id, "status": "queued"}

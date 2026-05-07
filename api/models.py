@@ -24,3 +24,6 @@ class RAGRequest(BaseModel):
     recency_decay: float | None = None
 
 
+class FeedbackRequest(BaseModel):
+    feedback_id: int = Field(..., description="The ID of the feedback entry to update.")
+    rating: int = Field(..., ge=1, le=5, description="User rating for the response, between 1 and 5.")

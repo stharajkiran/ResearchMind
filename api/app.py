@@ -3,6 +3,9 @@ import logging
 from datetime import datetime
 import os
 
+from aiohttp import request
+from celery import result
+from celery import result
 from fastapi import FastAPI, Request
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse
@@ -10,6 +13,9 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 
 from researchmind.retrieval.retriever import RetrieverService
+from researchmind.session.cache import QueryCache
+from researchmind.session.memory import SessionMemory
+from researchmind.session.memory import SessionMemory
 from .models import SearchRequest, RAGRequest
 from researchmind.ingestion.models import RAGResponse
 from researchmind.utils.find_root import find_project_root
@@ -22,6 +28,8 @@ from researchmind.agent.graph import build_graph
 from researchmind.agent.tracing import configure_tracing
 from researchmind.graph.citation_graph import load_graph
 from researchmind.guardrails.pipeline import ValidatorPipeline
+from researchmind.feedback.store import FeedbackStore
+from api.models import FeedbackRequest
 
 from dotenv import load_dotenv
 
@@ -83,17 +91,29 @@ async def lifespan(app: FastAPI):
     )
     app.state.retriever.load(Config.chunks_path)
 
+    # Postgres connection and feedback store setup
+    app.state.store = FeedbackStore()
+    app.state.store.create_tables()
+
+    # session memory setup
+    app.state.session_memory = SessionMemory()
+
+    # set up query cache
+    app.state.query_cache = QueryCache()
+
     configure_tracing()
     citation_graph = load_graph(project_root / "artifacts" / "citation_graph.pkl")
     pipeline = ValidatorPipeline(
-        app.state.retriever.corpus_paper_ids, 
-        app.state.retriever.encoder
+        app.state.retriever.corpus_paper_ids, app.state.retriever.encoder
     )
     app.state.agent = build_graph(
         retriever=app.state.retriever,
         llm=client,  # the ResearchMindLLM already created
         citation_graph=citation_graph,
         pipeline=pipeline,
+        store=app.state.store,
+        session_memory=app.state.session_memory,
+        query_cache=app.state.query_cache
     )
 
     yield
@@ -206,6 +226,56 @@ def agent(req: RAGRequest, request: Request) -> dict:
             "tool_call_history": [],
             "session_id": "",
             "final_answer": None,
+            "feedback_id": None,
         }
     )
-    return {"answer": result["final_answer"]}
+    return {"answer": result["final_answer"], "feedback_id": result.get("feedback_id")}
+
+
+@app.post("/feedback")
+def submit_feedback(req: FeedbackRequest, request: Request):
+    """Endpoint to receive user feedback on the generated answers.
+
+    Args:
+        req (FeedbackRequest): The feedback request containing the feedback ID and rating.
+        request (Request): The FastAPI request object.
+
+    Returns:
+        dict: A response indicating success or failure of feedback submission.
+    """
+    try:
+        logger.info("Received feedback submission: %s", req)
+        request.app.state.store.update_rating(req.feedback_id, req.rating)
+        logger.info(
+            "Feedback submitted successfully for feedback ID: %d", req.feedback_id
+        )
+        return {"status": "success", "message": "Feedback submitted successfully."}
+    except Exception:
+        logger.exception(
+            "Failed to submit feedback for feedback ID: %d", req.feedback_id
+        )
+        return {"status": "error", "message": "Failed to submit feedback."}
+
+
+@app.get("/ingest/status/{task_id}")
+def ingest_status(task_id: str, request: Request)-> dict:
+    """Endpoint to check the status of a paper ingestion task.
+
+    Args:
+        task_id (str): The ID of the ingestion task to check.
+        request (Request): The FastAPI request object.
+
+    Returns:
+        dict: A response containing the status of the ingestion task.
+    """
+    try:
+        logger.info("Checking status for ingestion task ID: %s", task_id)
+        from celery.result import AsyncResult
+        from worker.tasks import celery_app
+        # Check the status of the Celery task using the task ID
+        result = AsyncResult(task_id, app=celery_app)
+        logger.info("Ingestion task ID: %s has status: %s", task_id, result.status)
+        return {"task_id": task_id, "status": result.status, "result": result.result}
+    except Exception:
+        logger.exception("Failed to check status for ingestion task ID: %s", task_id)
+        return {"status": "error", "message": "Failed to check ingestion status."}

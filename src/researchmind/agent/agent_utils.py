@@ -17,13 +17,15 @@ Examples:
 """
 
 COMPARE_METHODOLOGIES_PROMPT = """Extract the methods or approaches being compared in this query.
-    Return only the main methods or approaches separated by commas. No explanation.
+Return a JSON object with a single key "subjects" containing a list of strings.
 
-    Examples:
-    - "How does BERT compare to GPT?" → BERT, GPT
-    - "Compare ResNet, VGG, and EfficientNet on ImageNet" → ResNet, VGG, EfficientNet
-    - "DINO vs MAE for anomaly detection" → DINO, MAE
-        """
+Examples:
+- "How does BERT compare to GPT?" → {"subjects": ["BERT", "GPT"]}
+- "Compare ResNet, VGG, and EfficientNet" → {"subjects": ["ResNet", "VGG", "EfficientNet"]}
+- "DINO vs MAE for anomaly detection" → {"subjects": ["DINO", "MAE"]}
+
+Return only the JSON object. No explanation.
+"""
 
 
 def classify_citation_direction(
@@ -38,5 +40,5 @@ def classify_citation_direction(
     )
     direction = direction.strip().lower()
     if direction not in {"inbound", "outbound", "both"}:
-        direction = "outbound"  # default to both if unclear
+        direction = "outbound"  # default to outbound if unclear
     return direction
