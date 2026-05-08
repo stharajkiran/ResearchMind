@@ -6,6 +6,12 @@ from researchmind.utils.find_root import find_project_root
 from researchmind.ingestion.pdf_parser import HEADING_PATTERN
 import logging
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
 # Copy and paste this directly into your code
 HEADING_CANONICAL_SET = [
     "abstract",
@@ -78,7 +84,9 @@ def clean_section(chunks_path: Path = None) -> list[dict]:
 
     for chunk in chunks:
         chunk["section"] = map_to_canonical(chunk["section"])
-
+    
+    # remove full_text and reference sections
+    chunks = [chunk for chunk in chunks if chunk["section"] not in ["fulltext", "reference"]]
 
     chunks_sections = [chunk["section"] for chunk in chunks]
     logger.info(f"Total chunks: {len(chunks)}")
@@ -96,7 +104,7 @@ def save_cleaned_chunks(chunks: list[dict], output_path: Path):
 
 if __name__ == "__main__":
     root_direct = find_project_root()
-    chunks_path = root_direct / "data/processed/semantic_chunks.jsonl"
+    chunks_path = root_direct / "data/processed/demo/fixed_chunks.jsonl"
     chunks = clean_section(chunks_path)
-    output_path = root_direct / "data/processed/cleaned_semantic_chunks.jsonl"
+    output_path = root_direct / "data/processed/demo/cleaned_fixed_chunks_wo_full_text_and_reference.jsonl"
     save_cleaned_chunks(chunks, output_path)

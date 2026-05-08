@@ -10,7 +10,7 @@ def fetch_papers_by_ids(arxiv_ids: list[str]) -> list[RawPaper]:
     all_papers = []
     for i in range(0, len(arxiv_ids), BATCH_SIZE):
         batch_ids = arxiv_ids[i : i + BATCH_SIZE]
-        client = arxiv.Client(page_size=100, delay_seconds=3.0, num_retries=3)
+        client = arxiv.Client(page_size=100, delay_seconds=10.0, num_retries=3)
         search = arxiv.Search(id_list=batch_ids)
         papers = []
         for result in tqdm(client.results(search), desc="Fetching by ID", total=len(batch_ids)):

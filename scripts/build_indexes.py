@@ -100,14 +100,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--artifact-dir",
         type=Path,
-        default=Path(find_project_root() / "artifacts" / "indexes" / "semantic"),
-        help="Output directory for generated indexes. Defaults to <project-root>/artifacts/indexes.",
+        default=Path(find_project_root() / "artifacts" / "indexes" / "demo"),
+        help="Output directory for generated indexes. Defaults to <project-root>/artifacts/indexes/demo.",
     )
     parser.add_argument(
         "--papers-path",
         type=Path,
-        default=Path(find_project_root() / "data" / "processed" / "cleaned_semantic_chunks.jsonl"),
-        help="Path to papers JSONL input file. Defaults to <project-root>/data/processed/cleaned_chunk.jsonl.",
+        default=Path(find_project_root() / "data" / "processed" /"demo" / "cleaned_fixed_chunks_wo_full_text_and_reference.jsonl"),
+        help="Path to papers JSONL input file. Defaults to <project-root>/data/processed/demo/cleaned_fixed_chunks_wo_full_text_and_reference.jsonl.",
     )
     parser.add_argument(
         "--index-type",

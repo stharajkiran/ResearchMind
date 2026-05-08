@@ -152,7 +152,9 @@ class OllamaProvider(LLMProvider):
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
-            extra_body={"keep_alive": -1, },
+            extra_body={
+                "keep_alive": -1,
+            },
         )
 
 
@@ -224,9 +226,15 @@ class ResearchMindLLM:
         best   -> Claude        (Anthropic)   — gap detection only
     """
 
-    TIERS: dict[str, tuple[str, str]] = {
+    _TIERS_DEFAULT: dict[str, tuple[str, str]] = {
         "fast": ("qwen3.5:9b", "ollama"),
         "medium": ("qwen3.6:27b", "ollama"),
+        "strong": ("deepseek-chat", "openai"),
+        "best": ("claude-sonnet-4-6", "anthropic"),
+    }
+    _TIERS_DEMO: dict[str, tuple[str, str]] = {
+        "fast": ("claude-haiku-4-5-20251001", "anthropic"),
+        "medium": ("claude-haiku-4-5-20251001", "anthropic"),
         "strong": ("deepseek-chat", "openai"),
         "best": ("claude-sonnet-4-6", "anthropic"),
     }
@@ -239,16 +247,25 @@ class ResearchMindLLM:
         ollama_think: bool = False,
         ollama_num_ctx: int = 4096,
     ):
+        demo_mode = os.environ.get("DEMO_MODE", "").lower() == "true"
+        if demo_mode:
+            self.TIERS: dict[str, tuple[str, str]] = self._TIERS_DEMO
+        else:
+            self.TIERS: dict[str, tuple[str, str]] = self._TIERS_DEFAULT
+
         self._providers: dict[str, LLMProvider] = {
             "anthropic": AnthropicProvider(
                 api_key=anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
             ),
-            "ollama": OllamaProvider(think=ollama_think, num_ctx=ollama_num_ctx),
             "openai": OpenAICompatibleProvider(
                 api_key=deepseek_api_key or os.environ.get("DEEPSEEK_API_KEY", ""),
                 base_url=deepseek_base_url,
             ),
         }
+        if not demo_mode:
+            self._providers["ollama"] = OllamaProvider(
+                think=ollama_think, num_ctx=ollama_num_ctx
+            )
 
     def _resolve(self, tier: str) -> tuple[LLMProvider, str]:
         if tier not in self.TIERS:

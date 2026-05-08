@@ -126,7 +126,11 @@ def parse_pdfs(
     limit: int | None = None,
 ) -> tuple[int, int, int]:
     """Parse all PDFs in a directory and write ParsedPaper records to JSONL."""
+
+    # check for duplications in papers_path and pdf_dir
+    # metadata is dict, so duplicates are overwritten
     metadata = load_papers_metadata(papers_path)
+    # duplicaates in pdf_dir are not handled, but should be rare and not cause major issues since we check for metadata match before parsing
     pdf_paths = sorted(pdf_dir.glob("*.pdf"))
     if limit is not None:
         pdf_paths = pdf_paths[:limit]
@@ -136,9 +140,15 @@ def parse_pdfs(
     skipped_count = 0
     failed_count = 0
 
+    parsed_id = set()
     with output_path.open("w", encoding="utf-8") as handle:
         for pdf_path in pdf_paths:
             paper_id = pdf_path.stem
+            # remove the duplicate
+            if paper_id in parsed_id:
+                skipped_count += 1
+                logger.warning("Skipping %s: already parsed", paper_id)
+                continue
             paper = metadata.get(paper_id)
             if paper is None:
                 skipped_count += 1
@@ -147,6 +157,7 @@ def parse_pdfs(
 
             try:
                 parsed_paper = parse_pdf(pdf_path, paper)
+                parsed_id.add(paper_id)
             except Exception as exc:
                 failed_count += 1
                 logger.exception("Failed parsing %s: %s", pdf_path.name, exc)
@@ -174,19 +185,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pdf-dir",
         type=Path,
-        default=project_root / "data" / "raw" / "arxiv_pdfs",
+        default=project_root / "data" / "raw" / "arxiv_pdfs_ss2",
         help="Directory containing downloaded PDF files.",
     )
     parser.add_argument(
         "--papers-path",
         type=Path,
-        default=project_root / "data" / "processed" / "papers.jsonl",
+        default=project_root / "data" / "processed" /"demo"/ "ss2_demo_papers.jsonl",
         help="Path to the raw papers metadata JSONL.",
     )
     parser.add_argument(
         "--output-path",
         type=Path,
-        default=project_root / "data" / "processed" / "parsed_papers.jsonl",
+        default=project_root / "data" / "processed" /"demo"/ "ss2_demo_parsed_papers.jsonl",
         help="Destination JSONL path for parsed papers.",
     )
     parser.add_argument(

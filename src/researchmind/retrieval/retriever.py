@@ -93,7 +93,6 @@ class RetrieverService(VectorStore):
             self._chroma = ChromaStore(
                 self._chroma_collection_name, encoder=self._encoder
             )
-
             logger.info("Retriever service loaded successfully.")
         except Exception as e:
             logger.error("Failed to load retriever service: %s", e)
@@ -135,6 +134,20 @@ class RetrieverService(VectorStore):
             for c in self._chunk_dict.values()
             if c["paper_id"] in set(paper_ids)
         ]
+    
+    @property
+    def lookup_paper_metadata(self) -> dict[str, dict]:
+        """Returns a dictionary mapping paper_id to its metadata (title, authors, year, etc.)"""
+        metadata_dict = {}
+        for chunk in self._chunk_dict.values():
+            paper_id = chunk["paper_id"]
+            if paper_id not in metadata_dict:
+                metadata_dict[paper_id] = {
+                    "title": chunk.get("title", ""),
+                    "authors": chunk.get("authors", []),
+                    "year": chunk.get("year", 0),
+                }
+        return metadata_dict
 
     @property
     def corpus_paper_ids(self) -> set[str]:

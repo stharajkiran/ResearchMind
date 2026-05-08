@@ -14,6 +14,9 @@ from researchmind.ingestion.models import (
     ResearchGapResponse,
 )
 
+from researchmind.metrics import validation_blocks_total
+
+
 class ValidatorPipeline:
 
     def __init__(
@@ -57,6 +60,8 @@ class ValidatorPipeline:
             )
         overall_passed = all(v.passed for v in validation_results)
         blocked = not overall_passed
+        if blocked:
+            validation_blocks_total.inc()
         return PipeLineResult(
             results=validation_results,
             overall_passed=overall_passed,

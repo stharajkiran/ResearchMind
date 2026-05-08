@@ -159,9 +159,9 @@ def chunk_papers(
 
 
 def main():
-    parsed_papers_path = Path("data/processed/parsed_papers.jsonl")
-    output_path = Path("data/processed/semantic_chunks.jsonl")
-    chunker = SemanticChunker(chunk_size=200, overlap=20)
+    parsed_papers_path = Path("data/processed/demo/ss2_demo_parsed_papers.jsonl")
+    output_path = Path("data/processed/demo/fixed_chunks.jsonl")
+    chunker = FixedSizeChunker(chunk_size=200, overlap=20)
     chunks_written, papers_failed = chunk_papers(
         chunker, parsed_papers_path, output_path
     )

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: researchmind-api
+    runtime: docker
+    dockerfilePath: api/Dockerfile
+    region: oregon
+    plan: free
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: INDEX_PHASE
+        value: demo
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: POSTGRES_DSN
+        sync: false

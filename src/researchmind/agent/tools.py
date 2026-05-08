@@ -17,6 +17,7 @@ from researchmind.session.cache import QueryCache
 from researchmind.session.memory import SessionMemory
 from researchmind.utils.llm_client import ResearchMindLLM
 from researchmind.graph.citation_graph import get_neighbors
+from researchmind.metrics import tool_calls_total
 from researchmind.utils.build_prompt import (
     build_comparison_prompt,
     build_gap_prompt,
@@ -41,6 +42,7 @@ class SubjectList(BaseModel):
 
 @traceable
 def search_corpus(state: AgentState, retriever: RetrieverService) -> dict:
+    tool_calls_total.labels(tool_name="search_corpus").inc()
     query = state["query"]
     retrieved_chunks = retriever.search(query, k=10)
     return {
@@ -53,6 +55,7 @@ def search_corpus(state: AgentState, retriever: RetrieverService) -> dict:
 def search_recent(
     state: AgentState, retriever: RetrieverService, recency_decay_rate: float
 ) -> dict:
+    tool_calls_total.labels(tool_name="search_recent").inc()
     query = state["query"]
     retrieved_chunks = retriever.search(
         query, k=20, recency_decay_rate=recency_decay_rate
@@ -70,6 +73,7 @@ def trace_citation_graph(
     llm: ResearchMindLLM,
     graph: nx.DiGraph,
 ) -> dict:
+    tool_calls_total.labels(tool_name="trace_citation_graph").inc()
     query = state["query"]
     seed_candidates = retriever.search(query, k=10)
     seed_id = next(
@@ -108,7 +112,7 @@ def synthesise_answer(
     session_memory: SessionMemory,
     query_cache: QueryCache,
 ) -> dict:
-    # Placeholder for answer synthesis logic
+    tool_calls_total.labels(tool_name="synthesise_answer").inc()
     query = state["query"]
     # check the redis cache
     if cached_answer := query_cache.get(query):
@@ -212,6 +216,8 @@ def synthesise_answer(
 def compare_methodologies(
     state: AgentState, retriever: RetrieverService, llm: ResearchMindLLM
 ) -> dict:
+    tool_calls_total.labels(tool_name="compare_methodologies").inc()
+
     user_prompt = state["query"]
     subjects = llm.complete_structured(
         user_prompt=user_prompt,
@@ -250,6 +256,7 @@ def detect_research_gaps(
     pipeline: ValidatorPipeline,
     store: FeedbackStore,
 ) -> dict:
+    tool_calls_total.labels(tool_name="detect_research_gaps").inc()
     # Placeholder for research gap detection logic
     query = state["query"]
     retrieved_chunks = retriever.search(query, k=20)
@@ -314,6 +321,8 @@ def detect_research_gaps(
 
 @traceable
 def read_session_memory(state: AgentState, session_memory: SessionMemory) -> dict:
+    tool_calls_total.labels(tool_name="read_session_memory").inc()
+
     # Redis wired in Phase 6 (Celery + Redis deferred)
     # get the session ID from state
     session_id = state.get("session_id", "unknown_session")

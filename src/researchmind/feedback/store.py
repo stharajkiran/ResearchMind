@@ -6,17 +6,21 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from dotenv import load_dotenv
+from researchmind.metrics import feedback_scores
 
 load_dotenv()
 
+
 class FeedbackStore:
     def __init__(self, dsn: str | None = None):
-        self._dsn = dsn or os.environ["POSTGRES_DSN"]
+        self._dsn = dsn or os.environ.get("POSTGRES_DSN")
 
     def _conn(self):
         return psycopg2.connect(self._dsn)
 
     def create_tables(self) -> None:
+        if self._dsn is None:
+            return
         sql = """
         CREATE TABLE IF NOT EXISTS feedback (
             id                      SERIAL PRIMARY KEY,
@@ -60,7 +64,9 @@ class FeedbackStore:
         retrieved_paper_ids: list[str],
         retrieved_chunk_ids: list[str],
         rating: int | None = None,
-    ) -> int:
+    ) -> int | None:
+        if self._dsn is None:
+            return None
         sql = """
         INSERT INTO feedback (
             session_id, query, intent, answer_json,
@@ -91,12 +97,15 @@ class FeedbackStore:
                 return cur.fetchone()[0]
 
     def update_rating(self, feedback_id: int, rating: int) -> None:
+        if self._dsn is None:
+            return
         with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE feedback SET rating = %s WHERE id = %s",
                     (rating, feedback_id),
                 )
+                feedback_scores.observe(rating)
 
     def update_ragas(
         self,
@@ -105,6 +114,8 @@ class FeedbackStore:
         context_precision: float,
         answer_relevancy: float,
     ) -> None:
+        if self._dsn is None:
+            return
         with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -117,6 +128,8 @@ class FeedbackStore:
                 )
 
     def get_low_rated(self, threshold: int = 3) -> list[dict[str, Any]]:
+        if self._dsn is None:
+            return []
         sql = """
         SELECT * FROM feedback
         WHERE rating IS NOT NULL AND rating <= %s
@@ -128,6 +141,8 @@ class FeedbackStore:
                 return [dict(r) for r in cur.fetchall()]
 
     def get_all_with_scores(self) -> list[dict[str, Any]]:
+        if self._dsn is None:
+            return []
         sql = """
         SELECT * FROM feedback
         WHERE ragas_faithfulness IS NOT NULL
@@ -139,6 +154,8 @@ class FeedbackStore:
                 return [dict(r) for r in cur.fetchall()]
 
     def get_all(self) -> list[dict]:
+        if self._dsn is None:
+            return []
         with self._conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("SELECT * FROM feedback ORDER BY created_at DESC;")

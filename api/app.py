@@ -6,7 +6,7 @@ import os
 from aiohttp import request
 from celery import result
 from celery import result
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -53,11 +53,19 @@ logger = logging.getLogger("api")
 class Config:
     "Configuration for API, including logging and any other global setup."
 
-    phase = os.environ.get("INDEX_PHASE", "phase2")
+    phase = (
+        os.environ.get("INDEX_PHASE", "phase2")
+        if os.environ.get("DEMO_MODE", "False").lower() == "false"
+        else "demo"
+    )
     artifact_dir = project_root / "artifacts" / "indexes" / phase
     if phase == "semantic":
         chunks_path = (
             project_root / "data" / "processed" / "cleaned_semantic_chunks.jsonl"
+        )
+    elif phase == "demo":
+        chunks_path = (
+            project_root / "data" / "processed" / "demo" / "demo_final_chunks.jsonl"
         )
     else:
         chunks_path = project_root / "data" / "processed" / "cleaned_chunks.jsonl"
@@ -90,6 +98,7 @@ async def lifespan(app: FastAPI):
         chunks_path=Config.chunks_path,
     )
     app.state.retriever.load(Config.chunks_path)
+    app.state.paper_metadata = app.state.retriever.lookup_paper_metadata
 
     # Postgres connection and feedback store setup
     app.state.store = FeedbackStore()
@@ -113,7 +122,7 @@ async def lifespan(app: FastAPI):
         pipeline=pipeline,
         store=app.state.store,
         session_memory=app.state.session_memory,
-        query_cache=app.state.query_cache
+        query_cache=app.state.query_cache,
     )
 
     yield
@@ -258,7 +267,7 @@ def submit_feedback(req: FeedbackRequest, request: Request):
 
 
 @app.get("/ingest/status/{task_id}")
-def ingest_status(task_id: str, request: Request)-> dict:
+def ingest_status(task_id: str, request: Request) -> dict:
     """Endpoint to check the status of a paper ingestion task.
 
     Args:
@@ -272,6 +281,7 @@ def ingest_status(task_id: str, request: Request)-> dict:
         logger.info("Checking status for ingestion task ID: %s", task_id)
         from celery.result import AsyncResult
         from worker.tasks import celery_app
+
         # Check the status of the Celery task using the task ID
         result = AsyncResult(task_id, app=celery_app)
         logger.info("Ingestion task ID: %s has status: %s", task_id, result.status)
@@ -279,3 +289,11 @@ def ingest_status(task_id: str, request: Request)-> dict:
     except Exception:
         logger.exception("Failed to check status for ingestion task ID: %s", task_id)
         return {"status": "error", "message": "Failed to check ingestion status."}
+
+
+@app.get("/paper/{paper_id}")
+def get_paper(paper_id: str, request: Request):
+    meta = request.app.state.paper_metadata.get(paper_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    return {"paper_id": paper_id, **meta}

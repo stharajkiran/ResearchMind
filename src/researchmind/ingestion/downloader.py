@@ -61,8 +61,8 @@ async def download_batch(
 
 
 if __name__ == "__main__":
-    output_dir = Path("data/raw/arxiv_pdfs")
-    papers_path = Path("data/processed/papers.jsonl")
+    output_dir = Path("data/raw/arxiv_pdfs_ss2")
+    papers_path = Path("data/processed/demo/ss2_demo_papers.jsonl")
     with papers_path.open("r", encoding="utf-8") as f:
         papers = [json.loads(line) for line in f]
 
