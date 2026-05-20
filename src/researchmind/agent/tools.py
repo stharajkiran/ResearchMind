@@ -7,7 +7,7 @@ from researchmind.ingestion.models import (
     RAGResponse,
     ResearchGapResponse,
 )
-from researchmind.retrieval.retriever import RetrieverService
+from researchmind.retrieval.vector_store import VectorStore
 from researchmind.guardrails.pipeline import ValidatorPipeline
 import networkx as nx
 from itertools import chain
@@ -41,7 +41,7 @@ class SubjectList(BaseModel):
 
 
 @traceable
-def search_corpus(state: AgentState, retriever: RetrieverService) -> dict:
+def search_corpus(state: AgentState, retriever: VectorStore) -> dict:
     tool_calls_total.labels(tool_name="search_corpus").inc()
     query = state["query"]
     retrieved_chunks = retriever.search(query, k=10)
@@ -53,7 +53,7 @@ def search_corpus(state: AgentState, retriever: RetrieverService) -> dict:
 
 @traceable
 def search_recent(
-    state: AgentState, retriever: RetrieverService, recency_decay_rate: float
+    state: AgentState, retriever: VectorStore, recency_decay_rate: float
 ) -> dict:
     tool_calls_total.labels(tool_name="search_recent").inc()
     query = state["query"]
@@ -69,7 +69,7 @@ def search_recent(
 @traceable
 def trace_citation_graph(
     state: AgentState,
-    retriever: RetrieverService,
+    retriever: VectorStore,
     llm: ResearchMindLLM,
     graph: nx.DiGraph,
 ) -> dict:
@@ -214,7 +214,7 @@ def synthesise_answer(
 
 @traceable
 def compare_methodologies(
-    state: AgentState, retriever: RetrieverService, llm: ResearchMindLLM
+    state: AgentState, retriever: VectorStore, llm: ResearchMindLLM
 ) -> dict:
     tool_calls_total.labels(tool_name="compare_methodologies").inc()
 
@@ -251,7 +251,7 @@ def compare_methodologies(
 @traceable
 def detect_research_gaps(
     state: AgentState,
-    retriever: RetrieverService,
+    retriever: VectorStore,
     llm: ResearchMindLLM,
     pipeline: ValidatorPipeline,
     store: FeedbackStore,

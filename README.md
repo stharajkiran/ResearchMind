@@ -1,55 +1,31 @@
-# ResearchMind — Enterprise R&D Intelligence Platform
+# ResearchMind — Self-hosted Research Intelligence for Domain-Specific ML Researchers
 
-A production-grade research assistant that retrieves, reasons over, and synthesises academic literature. Built as an open-source tool for retrieval and reasoning problem to help during litereature review and research.
+A production-grade research assistant that retrieves, reasons over, and synthesises academic literature. Built as a self-hosted alternative to $50k/yr tools like Cypris and Elicit — combining semantic search, citation graph reasoning, and research gap detection to answer questions that Google Scholar cannot.
 
----
-
-## Why I built this
-
-R&D teams spend roughly half their working week on literature search — finding papers, checking what cites what, figuring out what problems are still unsolved. Most existing tools return keyword matches and stop there. The expensive enterprise ones add some AI on top but lock everything behind sales calls.
-
-This project is my attempt to build the full stack properly: multi-source retrieval, citation graph traversal, hybrid search, and LLM synthesis with actual grounding validation.
+**Demo:** [huggingface.co/spaces/kstha/researchmind](https://huggingface.co/spaces/kstha/researchmind)  
+**Corpus:** 233 OOD/anomaly detection papers (CV domain, 2019–2025)
 
 ---
 
-## Current Status — Phase 2 Complete
+## What makes it novel
 
-Phase 2 delivers a full RAG pipeline on top of the Phase 1 search engine, evaluated against a 200-query benchmark across 5 query categories.
-
-**What's built:**
-- Full-text PDF ingestion: 1989 papers downloaded, section-aware parsing, 113k fixed-size chunks
-- Section normalization: canonical section labels (method, result, experiment, etc.)
-- Hybrid retrieval: FAISS+BM25 RRF for corpus retrieval, ChromaDB for user uploads
-- RAG synthesis endpoint (`POST /rag`): Claude Sonnet with structured output via instructor
-- 200-query test set: 40 queries × 5 categories, synthetic ground truth via Claude Haiku
-- RAGAS evaluation harness: batched evaluation, MLflow logging per category
-- Citation graph: NetworkX directed graph on OpenAlex data (1989 nodes, 26 edges)
-- Chunking A/B: fixed-size vs semantic chunking benchmarked on RAGAS
-
----
-
-## Phase 1 — Hybrid Search Engine
-
-Phase 1 delivers a fully benchmarked hybrid search engine serving real arXiv papers over a production API.
-
-**What's built:**
-- arXiv ingestion pipeline with rate limiting and JSONL storage
-- Three embedding models benchmarked — MPNet selected on recall data
-- Three FAISS index types benchmarked — HNSW32 selected on latency + recall data
-- Hybrid BM25 + dense retrieval with Reciprocal Rank Fusion
-- FastAPI `/search` endpoint with Prometheus metrics and structured logging
-- DVC pipeline — `dvc repro` reproduces the full corpus and indexes from scratch
-- Load tested at 10/50/100 concurrent users
+1. **Multi-source heterogeneous retrieval** — arXiv + Semantic Scholar simultaneously
+2. **Citation graph reasoning** — NetworkX multi-hop traversal, not just similarity
+3. **HyDE benchmarked on its original evaluation domain** — Gao et al. 2022 introduced HyDE on arXiv; we evaluated it there and found it hurts (-15% overall)
+4. **Hybrid BM25 + dense retrieval with RRF** — handles author names, model names, acronyms
+5. **SPECTER2 domain-adapted embedding benchmark** vs all-mpnet, bge-small
+6. **Research gap detection** — structured LLM analysis finding white space (the $50k Cypris use case)
+7. **Feedback-driven index improvement loop** — PostgreSQL → k-means clustering → re-chunking
 
 ---
 
 ## Benchmarks
 
-All benchmarks logged to MLflow. Decisions made from data, not defaults.
+All results logged to MLflow. Every number has a corresponding run.
 
-### Embedding model selection
+### Table 1 — Embedding model selection
 
-Evaluated on 60 synthetic queries (30 semantic + 30 technical) over a 5,000-paper corpus. GPU-accelerated (CUDA 12.8).
+Evaluated on 60 synthetic queries (30 semantic + 30 technical) over a 5,000-paper corpus.
 
 | Model | Recall@10 | Semantic Recall | Technical Recall | Throughput (docs/sec) | P95 Latency | Selected |
 |---|---|---|---|---|---|---|
@@ -57,9 +33,9 @@ Evaluated on 60 synthetic queries (30 semantic + 30 technical) over a 5,000-pape
 | bge-small-en-v1.5 | 0.95 | 0.90 | 1.00 | 1,566 | 10ms | |
 | **all-mpnet-base-v2** | **0.97** | **0.93** | **1.00** | **542** | **12ms** | ✓ |
 
-All three models hit 100% technical recall. MPNet leads on semantic recall (0.93) — the primary failure mode in research search. BGE runs at 3× the throughput but trails by 3 points on semantic recall. SPECTER2's citation-proximity training objective doesn't generalise to topic-based retrieval.
+MPNet leads on semantic recall (0.93) — the primary failure mode in research search. SPECTER2's citation-proximity training objective does not generalise to topic-based retrieval.
 
-### FAISS index selection
+### Table 2 — FAISS index selection
 
 | Index | Recall@10 | P50 Latency | P95 Latency | Build Time | Selected |
 |---|---|---|---|---|---|
@@ -67,71 +43,189 @@ All three models hit 100% technical recall. MPNet leads on semantic recall (0.93
 | IVF100 (inverted file) | 0.58 | <1ms | <1ms | 0.082s | |
 | **HNSW32 (graph-based)** | **0.97** | **<1ms** | **0.5ms** | **0.075s** | ✓ |
 
-IVF100 recall collapses to 0.58 despite a 5,000-paper corpus — at 50 vectors per cluster it sits at the minimum training threshold. HNSW32 matches Flat recall at sub-millisecond latency.
+IVF100 recall collapses to 0.58 — at 50 vectors per cluster it sits at the minimum training threshold. HNSW32 matches Flat recall at sub-millisecond latency.
 
-### Retrieval benchmark — hybrid vs single-retriever
+### Table 3 — Retrieval strategy (Phase 3)
 
-60-query evaluation set, split by query type.
+200-query test set across 5 categories. Standard retrieval is the production baseline.
 
-| Retriever | Semantic Recall | Technical Recall |
-|---|---|---|
-| FAISS only (HNSW32) | 93.3% | 100% |
-| BM25 only | 73.3% | 100% |
-| **RRF hybrid** | **93.3%** | **100%** |
+| Mode | Comparative | Factual | Gap Detection | Multi-hop | Temporal | Overall |
+|---|---|---|---|---|---|---|
+| **Standard** | **0.700** | **0.725** | **0.575** | **0.700** | 0.675 | **0.675** |
+| Rewrite | 0.725 | 0.700 | 0.550 | 0.700 | **0.700** | 0.675 |
+| HyDE | 0.650 | 0.650 | 0.350 | 0.625 | 0.575 | 0.570 |
 
-All three hit 100% technical recall — BM25 handles exact term matching. RRF matches FAISS on semantic recall on this corpus; BM25's lower semantic recall (73.3%) reflects keyword mismatch on paraphrased queries. RRF is retained as the serving strategy — it adds no regression and improves robustness on exact-match queries.
+HyDE was expected to give +22% on short ambiguous queries (Gao et al. 2022). Actual result: -15% overall. Gap detection queries ask about unsolved problems; HyDE generates abstracts describing solutions, drifting the embedding in the wrong direction.
 
-### Load test — 100 concurrent users
+### Table 4 — LangGraph agent routing accuracy (Phase 4)
 
-| Percentile | Latency |
+110-query labeled test set, 22 queries per intent. Router: qwen3.5:9b, temperature=0.
+
+| Intent | Accuracy |
 |---|---|
-| p50 | 14ms |
-| p95 | 54ms |
-| p99 | 2,100ms* |
+| search | 100% (22/22) |
+| citation | 100% (22/22) |
+| compare | 100% (23/23) |
+| gap_detection | 100% (21/21) |
+| recent | 100% (21/21) |
+| **Overall** | **100% (110/110)** |
 
-*p99 spike is encoder cold-start on first inference, not sustained degradation.
+### Table 5 — Validator pipeline (Phase 5)
 
-### Chunking A/B — fixed-size vs semantic (Phase 2)
+20-query evaluation (10 search + 10 gap_detection).
 
-200-query test set across 5 categories. Evaluated with Claude Haiku as judge, MPNet embeddings.
+| Validator | Pass Rate | Avg Score |
+|---|---|---|
+| CitationGroundingValidator | 100% | 1.000 |
+| PIIRedactionValidator | 100% | 1.000 |
+| HallucinationScoreValidator | 100% | 0.799 |
+| ResearchGapSchemaValidator | 100% | 1.000 |
+| **Overall block rate** | **0%** | — |
 
-| Metric | Fixed | Semantic | Winner |
-|---|---|---|---|
-| Faithfulness | 0.775 | 0.772 | Fixed |
-| Answer Relevancy | 0.848 | 0.843 | Fixed |
-| Context Precision | 0.467 | 0.429 | Fixed |
-| Context Recall | 0.598 | 0.561 | Fixed |
+Hallucination score (0.80) is cosine similarity between answer embedding and mean retrieved chunk embedding. Custom pipeline — no guardrails-ai cloud dependency.
 
-Fixed-size chunking is the production baseline. Semantic chunking improves Gap Detection context recall (+0.064) but degrades context precision across other categories due to uncapped chunk sizes (some >400 words). Semantic chunking with a 250-word cap is the planned Phase 6 improvement.
+### Phase 6 — Redis cache + Celery + feedback loop
+
+| Metric | Value |
+|---|---|
+| Cold avg latency | 9.66s |
+| Warm avg latency | 8.49s |
+| Citation query cache reduction | 93% (3.14s → 0.23s) |
+| /search p95 (Locust, 80 users) | 2.1s |
+| /agent p95 (Locust, 80 users) | 6.2s |
+| Total throughput | 15 RPS at 80 concurrent users |
 
 ---
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    subgraph Sources["Data Sources"]
+        arXiv["arXiv API"]
+        S2["Semantic Scholar API"]
+    end
+
+    subgraph Ingestion["Async Ingestion  ·  Celery + Redis"]
+        Parser["PDF Parser + Chunker"]
+        Corpus["papers.jsonl  (DVC-tracked)"]
+    end
+
+    subgraph Index["Search Index"]
+        Enc["MPNet Encoder\nall-mpnet-base-v2"]
+        FAISS["FAISS HNSW32"]
+        BM25["BM25 Index  (bm25s)"]
+        RRF["RRF Fusion"]
+    end
+
+    subgraph Agent["LangGraph Agent  ·  LangSmith traced"]
+        Router["Intent Router\nQwen local"]
+        Tools["search · recent · compare\ncitation · gaps · session memory"]
+        NX["NetworkX\nCitation Graph"]
+        Synth["Synthesise Answer\nClaude Sonnet"]
+    end
+
+    subgraph Validators["ValidatorPipeline"]
+        V["Citation Grounding → PII Redaction\nHallucination Score → Gap Schema"]
+    end
+
+    subgraph Storage["Storage"]
+        Redis["Redis\ncache + session memory"]
+        PG["PostgreSQL\nfeedback + ratings"]
+        Chroma["ChromaDB\nuser documents"]
+    end
+
+    subgraph Obs["Observability"]
+        Prom["Prometheus + Grafana\n6-panel dashboard"]
+        MLflow["MLflow\nexperiment tracking"]
+    end
+
+    subgraph Serving["Serving"]
+        API["FastAPI  /search  /agent"]
+        MCP["MCP Server  (5 tools)"]
+    end
+
+    Demo["Streamlit  ·  HuggingFace Spaces"]
+
+    arXiv & S2 --> Parser --> Corpus
+    Corpus --> Enc --> FAISS & BM25
+    FAISS & BM25 --> RRF
+
+    RRF --> Router
+    Router --> Tools
+    Tools <--> NX
+    Tools <--> Redis
+    Tools <--> Chroma
+    Tools --> Synth
+    Synth --> V
+    V --> API
+
+    API --> MCP
+    API --> Demo
+    API <--> Redis
+    API --> PG
+    API --> Prom
+    Router --> MLflow
 ```
-arXiv API ── Ingestion Pipeline ── papers.jsonl (DVC tracked)
-                                        │
-                              ┌─────────┴─────────┐
-                         BGE Encoder          bm25s
-                              │                   │
-                        FAISS HNSW32         BM25 Index
-                              └─────────┬─────────┘
-                                   RRF Fusion
-                                        │
-                                 FastAPI /search
-                                 (Prometheus metrics)
+
+```
+Semantic Scholar API ──┐
+arXiv API ─────────────┴── Ingestion Pipeline ── papers.jsonl (DVC)
+                                    │
+                          ┌─────────┴─────────┐
+                     MPNet Encoder          bm25s
+                          │                   │
+                    FAISS HNSW32         BM25 Index
+                          └─────────┬─────────┘
+                               RRF Fusion
+                                    │
+                           RetrieverService
+                                    │
+                          LangGraph Agent (7 tools)
+                          ├── search_corpus
+                          ├── search_recent
+                          ├── trace_citation_graph (NetworkX)
+                          ├── compare_methodologies
+                          ├── detect_research_gaps
+                          ├── read_session_memory (Redis)
+                          └── synthesise_answer
+                                    │
+                         ValidatorPipeline (4 validators)
+                                    │
+                              FastAPI /agent
+                         ┌──────────┴──────────┐
+                    Redis Cache            PostgreSQL
+                    (query cache,          (feedback store,
+                    session memory)         ratings, RAGAS)
 ```
 
 ---
 
 ## Tech Stack
 
-**Retrieval:** FAISS (HNSW32), bm25s, RRF fusion  
-**Embeddings:** bge-small-en-v1.5 (benchmarked against SPECTER2, MPNet)  
-**API:** FastAPI, Prometheus, uvicorn  
-**Pipeline:** DVC, MLflow  
-**Load testing:** Locust  
-**Data:** arXiv API
+| Layer | Technology |
+|---|---|
+| Embeddings | all-mpnet-base-v2 (benchmarked vs SPECTER2, bge-small) |
+| Retrieval | FAISS HNSW32, bm25s, RRF fusion |
+| Vector store (user docs) | ChromaDB |
+| Citation graph | NetworkX |
+| Agent | LangGraph StateGraph |
+| Agent observability | LangSmith |
+| LLM (synthesis, gaps) | Claude Sonnet (Anthropic) |
+| LLM (routing, rewrite) | Qwen3.5-9B / Qwen3.6-27B (Ollama local) |
+| Validation | Custom pipeline — 4 validators |
+| Evaluation | RAGAS |
+| Async ingestion | Celery + Redis (eventlet) |
+| Caching | Redis |
+| Feedback storage | PostgreSQL |
+| Experiment tracking | MLflow |
+| Data versioning | DVC |
+| API | FastAPI + Pydantic |
+| Observability | Prometheus + Grafana (6-panel dashboard) |
+| Load testing | Locust |
+| MCP server | 5 tools |
+| Demo | Streamlit (HuggingFace Spaces) |
+| Container | Docker + Docker Compose |
 
 ---
 
@@ -141,41 +235,49 @@ arXiv API ── Ingestion Pipeline ── papers.jsonl (DVC tracked)
 git clone https://github.com/stharajkiran/ResearchMind.git
 cd ResearchMind
 uv venv && uv sync
-cp .env.example .env
+cp .env.example .env  # add ANTHROPIC_API_KEY, REDIS_URL, POSTGRES_DSN
 
-# Reproduce full pipeline (fetch papers + build indexes)
-uv run dvc repro
+# Start all services
+docker compose up redis postgres mlflow
 
 # Start the API
 uv run uvicorn api.app:app --reload
-# POST http://localhost:8000/search {"query": "...", "k": 10}
-# Metrics: http://localhost:8000/metrics
-# Docs: http://localhost:8000/docs
+
+# Run the Streamlit demo
+uv run streamlit run demo/Home.py
+
+# Run with demo corpus (no Ollama required)
+DEMO_MODE=true INDEX_PHASE=demo uv run uvicorn api.app:app --reload
 ```
 
----
+### Reproduce benchmarks
 
-## How this generalises to other domains
+```bash
+# Phase 1 — embedding + FAISS benchmarks
+uv run python src/researchmind/evaluation/embedding_benchmark.py
+uv run python src/researchmind/evaluation/faiss_benchmark.py
 
-The core problem — professionals spending hours navigating large document collections to find answers they can act on — is not unique to research.
+# Phase 3 — retrieval strategy A/B
+uv run python src/researchmind/evaluation/phase3_eval.py
 
-**Financial documents:** same retrieval and synthesis layer over filings and reports. Main changes: data sources, a finance-adapted embedding model, and a chunker that understands financial document structure.
+# Phase 4 — routing accuracy
+uv run python src/researchmind/evaluation/phase4_eval.py
 
-**Legal documents:** case law has a natural citation structure that maps directly onto the citation graph component. "What later cases relied on this ruling?" is structurally identical to "what papers cited this one?"
+# Phase 5 — validator pipeline
+uv run python src/researchmind/evaluation/phase5_eval.py
 
-The ingestion, retrieval, and serving layers were kept separate intentionally. Swapping the data source shouldn't require rewriting the agent or the API.
+# Phase 6 — latency + load test
+uv run python src/researchmind/evaluation/phase6_eval.py
+uv run locust -f locustfile.py
+```
 
 ---
 
 ## Commercial context
 
 This targets the same problem as:
-- **Cypris** — 500M+ data points, enterprise R&D intelligence, $50k+/yr ARR
+- **Cypris** — 500M+ data points, enterprise R&D intelligence, $50k+/yr
 - **PatSnap Eureka** — GPT-powered answers grounded in patents and publications
 - **Elicit** — systematic literature review for researchers
 
----
-
-## Where this is going
-
-The hybrid search engine is the foundation. The full system adds a LangGraph agent on top — seven tools including citation graph traversal (NetworkX), HyDE retrieval, and research gap detection. Every tool call is traced in LangSmith. Answers pass through guardrails-ai validators before reaching the user, so hallucinated citations never surface. Redis caches repeated queries. The whole thing ships as a Dockerised stack with a Streamlit demo..
+The ingestion, retrieval, and serving layers are kept separate intentionally. Swapping to a different domain (patents, legal, financial) requires changing data sources and corpus — not the agent or API.

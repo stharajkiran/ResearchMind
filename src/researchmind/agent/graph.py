@@ -18,7 +18,7 @@ from researchmind.agent.tools import (
     detect_research_gaps,
 )
 from researchmind.guardrails.pipeline import ValidatorPipeline
-from researchmind.retrieval.retriever import RetrieverService
+from researchmind.retrieval.vector_store import VectorStore
 from researchmind.session.cache import QueryCache
 from researchmind.session.memory import SessionMemory
 from researchmind.utils.llm_client import ResearchMindLLM
@@ -27,7 +27,7 @@ from researchmind.feedback.store import FeedbackStore
 
 
 def build_graph(
-    retriever: RetrieverService,
+    retriever: VectorStore,
     llm: ResearchMindLLM,
     citation_graph: nx.DiGraph,
     pipeline: ValidatorPipeline,

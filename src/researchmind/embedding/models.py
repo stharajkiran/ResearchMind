@@ -41,8 +41,10 @@ class BGEEncoder(BaseResearchEncoder):
         super().__init__("BAAI/bge-small-en-v1.5")
 
 
-class SPECTER2Encoder:
+class SPECTER2Encoder(BaseResearchEncoder):
     def __init__(self):
+        # Does not call super().__init__() — SPECTER2 uses a custom adapter model,
+        # not SentenceTransformer. Manually satisfies the BaseResearchEncoder contract.
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = "allenai/specter2_base"
         self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter2_base")
@@ -59,6 +61,15 @@ class SPECTER2Encoder:
         self.model.set_active_adapters("adhoc_query")
         self.model.to(self.device)
         self.model.eval()
+        self.dim = 768  # SPECTER2 base hidden size
+
+    # ── BaseResearchEncoder contract ──────────────────────────────────────────
+
+    def encode(self, texts: list[str], batch_size: int = 32, **_) -> np.ndarray:
+        """Delegates to encode_queries — satisfies BaseResearchEncoder interface."""
+        return self.encode_queries(texts, batch_size=batch_size)
+
+    # ── SPECTER2-specific methods ─────────────────────────────────────────────
 
     def encode_corpus(self, papers: list[dict], batch_size: int = 32) -> np.ndarray:
         self.model.set_active_adapters("proximity")

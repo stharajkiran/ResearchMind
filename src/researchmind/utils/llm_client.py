@@ -1,9 +1,23 @@
 from abc import ABC, abstractmethod
-import os
+import logging
 import os
 from typing import Type, TypeVar
 import instructor
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+_OLLAMA_FALLBACK_MODEL = "claude-haiku-4-5-20251001"
+
+
+def _is_ollama_unreachable(exc: Exception) -> bool:
+    try:
+        import httpx
+        if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):
+            return True
+    except ImportError:
+        pass
+    return isinstance(exc, ConnectionRefusedError)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -218,12 +232,7 @@ class OpenAICompatibleProvider(LLMProvider):
 class ResearchMindLLM:
     """
     Single entry point for all LLM calls in ResearchMind.
-
-    Tier routing:
-        fast   -> Qwen3.5-9B   (Ollama)      — router, query rewriting
-        medium -> Qwen3.6-27B  (Ollama)      — synthesis, comparison
-        strong -> DeepSeek V4  (OpenAI-compat)— complex reasoning
-        best   -> Claude        (Anthropic)   — gap detection only
+    Tiers are injected from the phase YAML config via api/app.py.
     """
 
     _TIERS_DEFAULT: dict[str, tuple[str, str]] = {
@@ -232,26 +241,17 @@ class ResearchMindLLM:
         "strong": ("deepseek-chat", "openai"),
         "best": ("claude-sonnet-4-6", "anthropic"),
     }
-    _TIERS_DEMO: dict[str, tuple[str, str]] = {
-        "fast": ("claude-haiku-4-5-20251001", "anthropic"),
-        "medium": ("claude-haiku-4-5-20251001", "anthropic"),
-        "strong": ("deepseek-chat", "openai"),
-        "best": ("claude-sonnet-4-6", "anthropic"),
-    }
 
     def __init__(
         self,
+        tiers: dict[str, tuple[str, str]] | None = None,
         anthropic_api_key: str | None = None,
         deepseek_api_key: str | None = None,
         deepseek_base_url: str = "https://api.deepseek.com",
         ollama_think: bool = False,
         ollama_num_ctx: int = 4096,
     ):
-        demo_mode = os.environ.get("DEMO_MODE", "").lower() == "true"
-        if demo_mode:
-            self.TIERS: dict[str, tuple[str, str]] = self._TIERS_DEMO
-        else:
-            self.TIERS: dict[str, tuple[str, str]] = self._TIERS_DEFAULT
+        self.TIERS: dict[str, tuple[str, str]] = tiers or self._TIERS_DEFAULT
 
         self._providers: dict[str, LLMProvider] = {
             "anthropic": AnthropicProvider(
@@ -262,7 +262,8 @@ class ResearchMindLLM:
                 base_url=deepseek_base_url,
             ),
         }
-        if not demo_mode:
+        needs_ollama = any(provider == "ollama" for _, provider in self.TIERS.values())
+        if needs_ollama:
             self._providers["ollama"] = OllamaProvider(
                 think=ollama_think, num_ctx=ollama_num_ctx
             )
@@ -281,22 +282,29 @@ class ResearchMindLLM:
         max_tokens: int = 512,
         temperature: float = 0.0,
     ) -> str:
-        """Get the response text from the specified tier.
-
-        Tier routing:
-        - fast   -> Qwen3.5-9B   (Ollama)      — router, query rewriting
-        - medium -> Qwen3.6-27B  (Ollama)      — synthesis, comparison
-        - strong -> DeepSeek V4  (OpenAI-compat)— complex reasoning
-        - best   -> Claude        (Anthropic)   — gap detection only
-        """
         provider, model = self._resolve(tier)
-        return provider.complete(
-            model=model,
-            user_prompt=user_prompt,
-            system_prompt=system_prompt,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        try:
+            return provider.complete(
+                model=model,
+                user_prompt=user_prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+        except Exception as exc:
+            if isinstance(provider, OllamaProvider) and _is_ollama_unreachable(exc):
+                logger.warning(
+                    "Ollama unreachable (tier=%s, model=%s) — falling back to %s. Error: %s",
+                    tier, model, _OLLAMA_FALLBACK_MODEL, exc,
+                )
+                return self._providers["anthropic"].complete(
+                    model=_OLLAMA_FALLBACK_MODEL,
+                    user_prompt=user_prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            raise
 
     def complete_structured(
         self,
@@ -307,25 +315,28 @@ class ResearchMindLLM:
         max_tokens: int = 2048,
         temperature: float = 0.0,
     ) -> T:
-        """Get a structured response from the specified tier.
-
-        Args:
-            user_prompt (str): The prompt to send to the LLM.
-            response_model (Type[T]): The model/class to use for the structured response.
-            tier (str, optional): The tier to use. Defaults to "medium".
-            system_prompt (str | None, optional): The system prompt to guide the LLM. Defaults to None.
-            max_tokens (int, optional): The maximum number of tokens to generate. Defaults to 2048.
-            temperature (float, optional): The sampling temperature. Defaults to 0.0.
-
-        Returns:
-            T: The structured response.
-        """
         provider, model = self._resolve(tier)
-        return provider.complete_structured(
-            model=model,
-            user_prompt=user_prompt,
-            response_model=response_model,
-            system_prompt=system_prompt,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        try:
+            return provider.complete_structured(
+                model=model,
+                user_prompt=user_prompt,
+                response_model=response_model,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+        except Exception as exc:
+            if isinstance(provider, OllamaProvider) and _is_ollama_unreachable(exc):
+                logger.warning(
+                    "Ollama unreachable (tier=%s, model=%s) — falling back to %s. Error: %s",
+                    tier, model, _OLLAMA_FALLBACK_MODEL, exc,
+                )
+                return self._providers["anthropic"].complete_structured(
+                    model=_OLLAMA_FALLBACK_MODEL,
+                    user_prompt=user_prompt,
+                    response_model=response_model,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            raise

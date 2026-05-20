@@ -1,0 +1,24 @@
+phase: semantic
+
+corpus:
+  categories: ["cs.CV", "cs.LG", "cs.AI"]
+  date_from: "2019-01-01"
+  date_to: "2025-12-31"
+  max_results: 8000
+
+paths:
+  chunks: data/processed/cleaned_semantic_chunks.jsonl
+  artifact_dir: artifacts/indexes/semantic
+
+index:
+  type: HNSW32
+  vector_backend: faiss
+
+model:
+  embedding: sentence-transformers/all-mpnet-base-v2
+
+llm:
+  fast:   {model: "qwen3.5:9b",            provider: ollama}
+  medium: {model: "qwen3.6:27b",           provider: ollama}
+  strong: {model: "deepseek-chat",         provider: openai}
+  best:   {model: "claude-sonnet-4-6",     provider: anthropic}

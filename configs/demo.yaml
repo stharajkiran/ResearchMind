@@ -1,0 +1,25 @@
+phase: demo
+
+corpus:
+  categories: ["cs.CV", "cs.LG"]
+  date_from: "2019-01-01"
+  date_to: "2025-12-31"
+  max_results: 250
+
+paths:
+  chunks: data/processed/demo/demo_final_chunks.jsonl
+  artifact_dir: artifacts/indexes/demo
+
+index:
+  type: HNSW32
+  vector_backend: faiss
+
+model:
+  embedding: sentence-transformers/all-mpnet-base-v2
+
+# Haiku replaces Ollama — no local models needed for demo
+llm:
+  fast:   {model: "claude-haiku-4-5-20251001", provider: anthropic}
+  medium: {model: "claude-haiku-4-5-20251001", provider: anthropic}
+  strong: {model: "deepseek-chat",             provider: openai}
+  best:   {model: "claude-sonnet-4-6",         provider: anthropic}

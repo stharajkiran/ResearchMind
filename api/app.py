@@ -3,21 +3,23 @@ import logging
 from datetime import datetime
 import os
 
-from aiohttp import request
-from celery import result
-from celery import result
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 
+from researchmind.embedding.models import MPNetEncoder
+from researchmind.retrieval.faiss_index import FaissIndexBuilder
+from researchmind.retrieval.bm25_index import BM25IndexBuilder
+from researchmind.retrieval.chroma_store import ChromaStore
 from researchmind.retrieval.retriever import RetrieverService
 from researchmind.session.cache import QueryCache
 from researchmind.session.memory import SessionMemory
-from researchmind.session.memory import SessionMemory
+from researchmind.session.redis_backend import RedisCache
 from .models import SearchRequest, RAGRequest
 from researchmind.ingestion.models import RAGResponse
+from researchmind.utils.config import load_phase_config
 from researchmind.utils.find_root import find_project_root
 from researchmind.utils.logging import configure_logging_root
 from researchmind.utils.build_prompt import build_prompt
@@ -37,49 +39,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def configure_api_logging():
-    logs_dir = Config.logs_dir
-    log_path = Config.log_path
-    if not logs_dir.exists():
-        logs_dir.mkdir(parents=True, exist_ok=True)
-    configure_logging_root(log_path)
-
-
 project_root = find_project_root()
-# build logger for the API module
 logger = logging.getLogger("api")
 
-
-class Config:
-    "Configuration for API, including logging and any other global setup."
-
-    phase = (
-        os.environ.get("INDEX_PHASE", "phase2")
-        if os.environ.get("DEMO_MODE", "False").lower() == "false"
-        else "demo"
-    )
-    artifact_dir = project_root / "artifacts" / "indexes" / phase
-    if phase == "semantic":
-        chunks_path = (
-            project_root / "data" / "processed" / "cleaned_semantic_chunks.jsonl"
-        )
-    elif phase == "demo":
-        chunks_path = (
-            project_root / "data" / "processed" / "demo" / "demo_final_chunks.jsonl"
-        )
-    else:
-        chunks_path = project_root / "data" / "processed" / "cleaned_chunks.jsonl"
-
-    # model_name = "claude-sonnet-4-6"
-    model_name = "qwen3.6:27b"
-    logs_dir = project_root / "logs" / "api"
-    log_path = logs_dir / f"api_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+phase_config = load_phase_config(project_root)
+_logs_dir = project_root / "logs" / "api"
+_log_path = _logs_dir / f"api_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 
-# client = instructor.from_anthropic(
-#     Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-# )
-client = ResearchMindLLM()
+def configure_api_logging():
+    _logs_dir.mkdir(parents=True, exist_ok=True)
+    configure_logging_root(_log_path)
+
+
+client = ResearchMindLLM(
+    tiers={tier: (tc.model, tc.provider) for tier, tc in phase_config.llm_tiers.items()}
+)
 
 
 @asynccontextmanager
@@ -87,28 +62,39 @@ async def lifespan(app: FastAPI):
     # Configure logging once at startup
     configure_api_logging()
     logger.info("API startup")
-    logger.info("Loading retriever with index phase: %s", Config.phase)
-    logger.info("Using artifact dir: %s", Config.artifact_dir)
-    logger.info("Using chunks path: %s", Config.chunks_path)
+    logger.info("Loading retriever with phase=%s", phase_config.phase)
+    logger.info("Artifact dir: %s", phase_config.artifact_dir)
+    logger.info("Chunks path: %s", phase_config.chunks_path)
 
-    # Load retriever
-    app.state.retriever = RetrieverService(
-        Config.artifact_dir,
-        collection_name="researchmind",
-        chunks_path=Config.chunks_path,
+    # Wire up retrieval backends
+    encoder = MPNetEncoder()
+    dense = FaissIndexBuilder(
+        dimension=encoder.dim,
+        artifact_dir=phase_config.artifact_dir,
+        index_type=phase_config.index_type,
     )
-    app.state.retriever.load(Config.chunks_path)
+    dense.load()
+    sparse = BM25IndexBuilder(artifact_dir=phase_config.artifact_dir)
+    sparse.load()
+    filtered = ChromaStore(collection_name="researchmind", encoder=encoder)
+
+    app.state.retriever = RetrieverService(
+        dense=dense,
+        sparse=sparse,
+        filtered=filtered,
+        encoder=encoder,
+        chunks_path=phase_config.chunks_path,
+    )
     app.state.paper_metadata = app.state.retriever.lookup_paper_metadata
 
     # Postgres connection and feedback store setup
     app.state.store = FeedbackStore()
     app.state.store.create_tables()
 
-    # session memory setup
-    app.state.session_memory = SessionMemory()
-
-    # set up query cache
-    app.state.query_cache = QueryCache()
+    # shared Redis backend — both cache and session memory use the same connection
+    redis_backend = RedisCache()
+    app.state.session_memory = SessionMemory(backend=redis_backend)
+    app.state.query_cache = QueryCache(backend=redis_backend)
 
     configure_tracing()
     citation_graph = load_graph(project_root / "artifacts" / "citation_graph.pkl")

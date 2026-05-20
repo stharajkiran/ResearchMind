@@ -33,10 +33,12 @@ def run(
 
 
 if __name__ == "__main__":
-    print("Running ingestion pipeline...")
+    from researchmind.utils.config import load_phase_config
+    cfg = load_phase_config()
+    print(f"Running ingestion pipeline for phase={cfg.phase}...")
     run(
-        categories=["cs.LG", "cs.AI", "cs.CL"],
-        start_date=date(2018, 1, 1),
-        end_date=date(2025, 12, 31),
-        max_results=8000,
+        categories=cfg.corpus_categories,
+        start_date=date.fromisoformat(cfg.corpus_date_from),
+        end_date=date.fromisoformat(cfg.corpus_date_to),
+        max_results=cfg.corpus_max_results,
     )

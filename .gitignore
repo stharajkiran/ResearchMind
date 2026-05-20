@@ -22,6 +22,7 @@ artifacts/
 
 # MLflow
 mlruns/
+mlartifacts/
 
 # IDE
 .vscode/
@@ -34,6 +35,7 @@ Thumbs.db
 # DVC cache
 .dvc/cache/
 .dvc/tmp/
+.uv-cache/
 
 notebooks
 logs
@@ -41,3 +43,14 @@ mlflow.db
 
 
 z_rough
+md_files
+Makefile
+
+# Markdown docs
+*.md
+*.MD
+!/README.md
+!/README.MD
+
+.claude
+.dvc
