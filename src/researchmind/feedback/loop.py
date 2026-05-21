@@ -1,11 +1,14 @@
+import logging
+
 import mlflow
 import numpy as np
 from sklearn.cluster import KMeans
 
-from researchmind.feedback.store import FeedbackStore
-from researchmind.embedding.models import BaseResearchEncoder
+from researchmind.embedding.models import BaseResearchEncoder, MPNetEncoder
+from researchmind.feedback.interfaces import FeedbackStore
 from researchmind.utils.llm_client import ResearchMindLLM
-from researchmind.embedding.models import MPNetEncoder
+
+logger = logging.getLogger(__name__)
 
 
 class FeedbackLoop:
@@ -24,14 +27,14 @@ class FeedbackLoop:
         # Load low-rated feedback
         rows = self.store.get_low_rated(threshold=threshold)
         if not rows:
-            print("No low-rated feedback found. Exiting.")
+            logger.info("No low-rated feedback found. Exiting.")
             return
         queries = [r["query"] for r in rows]
         # embed all queries
         embeddings = self.encoder.encode(queries, normalize_embeddings=True)
 
         if len(rows) < 4:
-            print(f"Not enough low-rated feedback ({len(rows)} rows). Need at least 4.")
+            logger.warning("Not enough low-rated feedback (%d rows). Need at least 4.", len(rows))
             return
 
         # k-means clustering
@@ -79,10 +82,11 @@ class FeedbackLoop:
                 )
             mlflow.log_dict(cluster_labels, "cluster_labels.json")
 
-            print(f"Logged {k} clusters to MLflow.")
+            logger.info("Logged %d clusters to MLflow.", k)
 
 if __name__ == "__main__":
-    store = FeedbackStore()
+    from researchmind.feedback.store import PostgresFeedbackStore
+    store = PostgresFeedbackStore()
     encoder = MPNetEncoder()
     llm = ResearchMindLLM()
     loop = FeedbackLoop(store, encoder, llm)

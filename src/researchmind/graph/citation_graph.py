@@ -1,16 +1,18 @@
 from pathlib import Path
 import pickle
-import networkx as nx
-from researchmind.ingestion.openalex_client import get_referenced_arxiv_ids
 import logging
-from tqdm import tqdm
 import json
+
+import networkx as nx
+from tqdm import tqdm
+
+from researchmind.ingestion.discovery import CitationSource
 from researchmind.utils.find_root import find_project_root
 
 logger = logging.getLogger(__name__)
 
 
-def build_graph(corpus_ids: list[str]) -> nx.DiGraph:
+def build_graph(corpus_ids: list[str], source: CitationSource) -> nx.DiGraph:
     """Build  a directed citation graph from the given list of paper IDs.
 
     Args:
@@ -31,7 +33,7 @@ def build_graph(corpus_ids: list[str]) -> nx.DiGraph:
     ):
         try:
             # papers cited by this paper (outbound edges)
-            reference_arxiv_ids = get_referenced_arxiv_ids(arxiv_id)
+            reference_arxiv_ids = source.get_referenced_ids(arxiv_id)
             if reference_arxiv_ids is None:
                 logger.warning("No citation data returned for %s. Skipping.", arxiv_id)
                 continue
@@ -111,8 +113,9 @@ def main():
     graph_output_path = project_root / "artifacts" / "citation_graph.pkl"
     graph_output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    from researchmind.ingestion.discovery import SemanticScholarCitationSource
     logger.info("Building citation graph for %d papers...", len(arxiv_ids))
-    citation_graph = build_graph(arxiv_ids)
+    citation_graph = build_graph(arxiv_ids, source=SemanticScholarCitationSource())
 
     logger.info("Saving citation graph to %s", graph_output_path)
     save_graph(citation_graph, graph_output_path)

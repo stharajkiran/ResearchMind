@@ -53,8 +53,8 @@ if __name__ == "__main__":
     cfg = load_phase_config(project_root)
 
     # Existence guard — skip if already built
-    if cfg.artifact_dir.exists() and any(cfg.artifact_dir.iterdir()):
-        print(f"Indexes already exist at {cfg.artifact_dir} — skipping. Delete to rebuild.")
+    if cfg.index.artifact_dir.exists() and any(cfg.index.artifact_dir.iterdir()):
+        print(f"Indexes already exist at {cfg.index.artifact_dir} — skipping. Delete to rebuild.")
         sys.exit(0)
 
     logs_dir = project_root / "logs" / "build_indexes"
@@ -62,12 +62,12 @@ if __name__ == "__main__":
     configure_logging(
         logs_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log", logger
     )
-    logger.info("Building indexes for phase=%s, backend=%s", cfg.phase, cfg.vector_backend)
+    logger.info("Building indexes for phase=%s, backend=%s", cfg.phase, cfg.index.vector_backend)
 
     encoder = MPNetEncoder()
-    sparse = BM25IndexBuilder(artifact_dir=cfg.artifact_dir)
+    sparse = BM25IndexBuilder(artifact_dir=cfg.index.artifact_dir)
 
-    if cfg.vector_backend == "qdrant":
+    if cfg.index.vector_backend == "qdrant":
         from researchmind.retrieval.backends.qdrant_backend import QdrantBackend
         dense = QdrantBackend(
             collection_name=f"researchmind_{cfg.phase}",
@@ -77,13 +77,13 @@ if __name__ == "__main__":
     else:
         dense = FaissIndexBuilder(
             dimension=encoder.dim,
-            artifact_dir=cfg.artifact_dir,
-            index_type=cfg.index_type,
+            artifact_dir=cfg.index.artifact_dir,
+            index_type=cfg.index.index_type,
         )
 
     IndexBuilderService(
         encoder=encoder,
         dense=dense,
         sparse=sparse,
-        chunks_path=cfg.chunks_path,
+        chunks_path=cfg.index.chunks_path,
     ).run()

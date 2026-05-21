@@ -1,7 +1,7 @@
 from langsmith import traceable
 
 from researchmind.agent.state import AgentState
-from researchmind.feedback.store import FeedbackStore
+from researchmind.feedback.interfaces import FeedbackStore
 from researchmind.ingestion.models import (
     ComparisonRAGResponse,
     RAGResponse,

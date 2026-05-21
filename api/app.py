@@ -30,7 +30,7 @@ from researchmind.agent.graph import build_graph
 from researchmind.agent.tracing import configure_tracing
 from researchmind.graph.citation_graph import load_graph
 from researchmind.guardrails.pipeline import ValidatorPipeline
-from researchmind.feedback.store import FeedbackStore
+from researchmind.feedback.store import PostgresFeedbackStore
 from api.models import FeedbackRequest
 
 from dotenv import load_dotenv
@@ -53,7 +53,7 @@ def configure_api_logging():
 
 
 client = ResearchMindLLM(
-    tiers={tier: (tc.model, tc.provider) for tier, tc in phase_config.llm_tiers.items()}
+    tiers={tier: (tc.model, tc.provider) for tier, tc in phase_config.model.llm_tiers.items()}
 )
 
 
@@ -88,7 +88,7 @@ async def lifespan(app: FastAPI):
     app.state.paper_metadata = app.state.retriever.lookup_paper_metadata
 
     # Postgres connection and feedback store setup
-    app.state.store = FeedbackStore()
+    app.state.store = PostgresFeedbackStore()
     app.state.store.create_tables()
 
     # shared Redis backend — both cache and session memory use the same connection

@@ -3,16 +3,10 @@ import json
 from pathlib import Path
 from collections import Counter
 from researchmind.utils.find_root import find_project_root
-from researchmind.ingestion.pdf_parser import HEADING_PATTERN
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 
-# Copy and paste this directly into your code
 HEADING_CANONICAL_SET = [
     "abstract",
     "introduction",
@@ -45,8 +39,6 @@ SECTION_MAP = {
     "references": "reference",    
 }
 
-logger = logging.getLogger(__name__)
-
 def clean_header(section: str) -> str:
     # remove numbers and punctuation, keep only words using re
     cleaned = re.sub(r"^\d+(?:\.\d+)*\s+", "", section.strip())  # remove leading numbers and dots
@@ -78,23 +70,21 @@ def clean_section(chunks_path: Path = None) -> list[dict]:
         chunks = [json.loads(line) for line in f if line.strip()]
 
     chunks_sections = [chunk["section"] for chunk in chunks]
-    logger.info(f"Total chunks: {len(chunks)}")
+    logger.info("Total chunks: %d", len(chunks))
     section_freq = Counter(chunks_sections)
-    logger.info(f"Unique sections before cleaning: {len(section_freq)}\n")
+    logger.info("Unique sections before cleaning: %d", len(section_freq))
 
     for chunk in chunks:
         chunk["section"] = map_to_canonical(chunk["section"])
-    
-    # remove full_text and reference sections
+
     chunks = [chunk for chunk in chunks if chunk["section"] not in ["fulltext", "reference"]]
 
     chunks_sections = [chunk["section"] for chunk in chunks]
-    logger.info(f"Total chunks: {len(chunks)}")
+    logger.info("Total chunks after cleaning: %d", len(chunks))
     section_freq = Counter(chunks_sections)
-    logger.info(f"Unique sections after cleaning: {len(section_freq)}\n")
-    logger.info("All sections and their frequencies:")
+    logger.info("Unique sections after cleaning: %d", len(section_freq))
     for section, freq in section_freq.items():
-        logger.info(f"{section}: {freq}")
+        logger.info("  %s: %d", section, freq)
     return chunks # updated chunks with cleaned sections, can be saved back to file if needed
 
 def save_cleaned_chunks(chunks: list[dict], output_path: Path):
@@ -103,8 +93,7 @@ def save_cleaned_chunks(chunks: list[dict], output_path: Path):
             f.write(json.dumps(chunk) + "\n")
 
 if __name__ == "__main__":
-    root_direct = find_project_root()
-    chunks_path = root_direct / "data/processed/demo/fixed_chunks.jsonl"
-    chunks = clean_section(chunks_path)
-    output_path = root_direct / "data/processed/demo/cleaned_fixed_chunks_wo_full_text_and_reference.jsonl"
-    save_cleaned_chunks(chunks, output_path)
+    from researchmind.utils.config import load_phase_config
+    cfg = load_phase_config(find_project_root())
+    chunks = clean_section(cfg.ingestion.raw_chunks_path)
+    save_cleaned_chunks(chunks, cfg.index.chunks_path)

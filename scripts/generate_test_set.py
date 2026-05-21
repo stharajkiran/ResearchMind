@@ -71,8 +71,11 @@ def generate_queries(batch: List[Dict]) -> str:
 
 # 3. Execution Logic
 def main(batch_size: int = 5, total_queries: int = 60):
-    # Load your local papers
-    with open("data/processed/papers.jsonl", "r") as f:
+    from researchmind.utils.config import load_phase_config
+    from researchmind.utils.find_root import find_project_root
+    cfg = load_phase_config(find_project_root())
+
+    with cfg.ingestion.papers_path.open("r") as f:
         all_papers = [json.loads(line) for line in f]
 
     # Each paper generates 2 queries (semantic + technical)

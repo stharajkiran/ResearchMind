@@ -2,23 +2,42 @@ phase: phase2
 
 corpus:
   categories: ["cs.LG", "cs.AI", "cs.CL"]
+  keywords: []   # broad corpus — category filter only, no keyword restriction
   date_from: "2018-01-01"
-  date_to: "2025-12-31"
+  date_to:   "2025-12-31"
   max_results: 8000
 
-paths:
-  chunks: data/processed/cleaned_chunks.jsonl
-  artifact_dir: artifacts/indexes/phase2
+ingestion:
+  paths:
+    pdf_dir:       data/raw/arxiv_pdfs
+    papers:        data/processed/papers.jsonl
+    parsed_papers: data/processed/parsed_papers.jsonl
+    raw_chunks:    data/processed/raw_chunks.jsonl
+  download:
+    concurrency:     10
+    timeout_seconds: 30
+  chunking:
+    strategy:      section
+    max_words:     400
+    overlap_words: 50
 
 index:
-  type: HNSW32
+  chunks:        data/processed/cleaned_chunks.jsonl
+  artifact_dir:  artifacts/indexes/phase2
+  type:          HNSW32
   vector_backend: faiss
 
 model:
   embedding: sentence-transformers/all-mpnet-base-v2
+  llm:
+    fast:   {model: "qwen3.5:9b",        provider: ollama}
+    medium: {model: "qwen3.6:27b",       provider: ollama}
+    strong: {model: "deepseek-chat",     provider: openai}
+    best:   {model: "claude-sonnet-4-6", provider: anthropic}
 
-llm:
-  fast:   {model: "qwen3.5:9b",            provider: ollama}
-  medium: {model: "qwen3.6:27b",           provider: ollama}
-  strong: {model: "deepseek-chat",         provider: openai}
-  best:   {model: "claude-sonnet-4-6",     provider: anthropic}
+evaluation:
+  test_set:        data/processed/200_test_queries_set.json
+  ragas_responses: data/processed/RAGA_responses.json
+  log_dir:         logs/ragas_evaluation/phase2
+  batch_size:      10
+  experiment_name: RAGAS_Evaluation_phase2

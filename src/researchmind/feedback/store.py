@@ -5,15 +5,14 @@ from typing import Any
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from dotenv import load_dotenv
+from researchmind.feedback.interfaces import FeedbackStore
 from researchmind.metrics import feedback_scores
 
-load_dotenv()
 
+class PostgresFeedbackStore(FeedbackStore):
 
-class FeedbackStore:
     def __init__(self, dsn: str | None = None):
-        self._dsn = dsn or os.environ.get("POSTGRES_DSN")
+        self._dsn = dsn or os.environ.get("DATABASE_URL")
 
     def _conn(self):
         return psycopg2.connect(self._dsn)
@@ -81,17 +80,10 @@ class FeedbackStore:
                 cur.execute(
                     sql,
                     (
-                        session_id,
-                        query,
-                        intent,
-                        json.dumps(answer_json),
-                        hallucination_score,
-                        citation_grounding_score,
-                        validation_passed,
-                        json.dumps(validator_results),
-                        retrieved_paper_ids,
-                        retrieved_chunk_ids,
-                        rating,
+                        session_id, query, intent, json.dumps(answer_json),
+                        hallucination_score, citation_grounding_score,
+                        validation_passed, json.dumps(validator_results),
+                        retrieved_paper_ids, retrieved_chunk_ids, rating,
                     ),
                 )
                 return cur.fetchone()[0]
@@ -153,7 +145,7 @@ class FeedbackStore:
                 cur.execute(sql)
                 return [dict(r) for r in cur.fetchall()]
 
-    def get_all(self) -> list[dict]:
+    def get_all(self) -> list[dict[str, Any]]:
         if self._dsn is None:
             return []
         with self._conn() as conn:

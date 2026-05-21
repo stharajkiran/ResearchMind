@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from researchmind.feedback.store import FeedbackStore
+from researchmind.feedback.store import PostgresFeedbackStore
 
-store = FeedbackStore()
+store = PostgresFeedbackStore()
 rows = store.get_all()
 print(f"Found {len(rows)} feedback rows")
 

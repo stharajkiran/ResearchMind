@@ -2,24 +2,45 @@ phase: demo
 
 corpus:
   categories: ["cs.CV", "cs.LG"]
+  keywords:
+    - "anomaly detection"
+    - "out-of-distribution"
   date_from: "2019-01-01"
-  date_to: "2025-12-31"
+  date_to:   "2025-12-31"
   max_results: 250
 
-paths:
-  chunks: data/processed/demo/demo_final_chunks.jsonl
-  artifact_dir: artifacts/indexes/demo
+ingestion:
+  paths:
+    pdf_dir:       data/raw/arxiv_pdfs_ss2
+    papers:        data/processed/demo/ss2_demo_papers.jsonl
+    parsed_papers: data/processed/demo/ss2_demo_parsed_papers.jsonl
+    raw_chunks:    data/processed/demo/fixed_chunks.jsonl
+  download:
+    concurrency:     10
+    timeout_seconds: 30
+  chunking:
+    strategy:     section
+    max_words:    400
+    overlap_words: 50
 
 index:
-  type: HNSW32
+  chunks:       data/processed/demo/demo_final_chunks.jsonl
+  artifact_dir: artifacts/indexes/demo
+  type:         HNSW32
   vector_backend: faiss
 
 model:
   embedding: sentence-transformers/all-mpnet-base-v2
+  llm:
+    # Haiku replaces Ollama — no local models needed for demo
+    fast:   {model: "claude-haiku-4-5-20251001", provider: anthropic}
+    medium: {model: "claude-haiku-4-5-20251001", provider: anthropic}
+    strong: {model: "deepseek-chat",             provider: openai}
+    best:   {model: "claude-sonnet-4-6",         provider: anthropic}
 
-# Haiku replaces Ollama — no local models needed for demo
-llm:
-  fast:   {model: "claude-haiku-4-5-20251001", provider: anthropic}
-  medium: {model: "claude-haiku-4-5-20251001", provider: anthropic}
-  strong: {model: "deepseek-chat",             provider: openai}
-  best:   {model: "claude-sonnet-4-6",         provider: anthropic}
+evaluation:
+  test_set:        data/processed/demo/test_queries.json
+  ragas_responses: data/processed/demo/ragas_responses.json
+  log_dir:         logs/ragas_evaluation/demo
+  batch_size:      10
+  experiment_name: RAGAS_Evaluation_demo

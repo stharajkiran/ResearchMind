@@ -1,0 +1,134 @@
+version: '3'
+
+vars:
+  PHASE: '{{.PHASE | default "phase2"}}'
+
+tasks:
+
+  # ── Setup ──────────────────────────────────────────────────────────────────
+
+  setup:
+    desc: Copy .env.example to .env and install deps
+    deps: [deps]
+    cmds:
+      - cmd: copy .env.example .env
+        platforms: [windows]
+      - cmd: cp .env.example .env
+        platforms: [linux, darwin]
+    status:
+      - test -f .env
+
+  deps:
+    desc: Install Python dependencies
+    cmds:
+      - uv sync
+
+  hooks:
+    desc: Install and run pre-commit hooks against all files
+    cmds:
+      - uv run pre-commit install
+      - uv run pre-commit run --all-files
+
+  # ── Services ───────────────────────────────────────────────────────────────
+
+  services:
+    desc: Start Redis, Postgres, MLflow (detached)
+    cmds:
+      - docker compose up redis postgres mlflow -d
+
+  services:all:
+    desc: Start all services including Prometheus + Grafana
+    cmds:
+      - docker compose up -d
+
+  services:down:
+    desc: Stop all services
+    cmds:
+      - docker compose down
+
+  monitoring:
+    desc: Start Prometheus + Grafana only
+    cmds:
+      - docker compose up prometheus grafana -d
+
+  # ── Ollama ─────────────────────────────────────────────────────────────────
+
+  ollama:
+    desc: Pull Ollama models (qwen3.5:9b, qwen3.6:27b)
+    cmds:
+      - ollama pull qwen3.5:9b
+      - ollama pull qwen3.6:27b
+
+  # ── Artifacts ──────────────────────────────────────────────────────────────
+
+  ingest:
+    desc: Run ingestion pipeline (INDEX_PHASE={{.PHASE}})
+    cmds:
+      - uv run python -m researchmind.ingestion.pipeline
+    env:
+      INDEX_PHASE: '{{.PHASE}}'
+
+  citation-graph:
+    desc: Build citation graph (INDEX_PHASE={{.PHASE}})
+    cmds:
+      - uv run python -m researchmind.graph.citation_graph
+    env:
+      INDEX_PHASE: '{{.PHASE}}'
+
+  indexes:
+    desc: Build FAISS + BM25 indexes (INDEX_PHASE={{.PHASE}})
+    cmds:
+      - uv run python scripts/build_indexes.py
+    env:
+      INDEX_PHASE: '{{.PHASE}}'
+
+  artifacts:
+    desc: Run full artifact pipeline — ingest, citation graph, indexes
+    cmds:
+      - task: ingest
+        vars: {PHASE: '{{.PHASE}}'}
+      - task: citation-graph
+        vars: {PHASE: '{{.PHASE}}'}
+      - task: indexes
+        vars: {PHASE: '{{.PHASE}}'}
+
+  # ── Run ────────────────────────────────────────────────────────────────────
+
+  api:
+    desc: Start FastAPI on :8000 (INDEX_PHASE={{.PHASE}})
+    deps: [services]
+    cmds:
+      - uv run uvicorn api.app:app --host 0.0.0.0 --port 8000
+    env:
+      INDEX_PHASE: '{{.PHASE}}'
+
+  demo:
+    desc: Start FastAPI in demo mode — no Ollama needed
+    cmds:
+      - uv run uvicorn api.app:app --host 0.0.0.0 --port 8000
+    env:
+      INDEX_PHASE: demo
+
+  ui:
+    desc: Start Streamlit on :8501
+    cmds:
+      - uv run streamlit run demo/Home.py
+
+  # ── Eval ───────────────────────────────────────────────────────────────────
+
+  eval:
+    desc: Run all evaluation benchmarks
+    cmds:
+      - uv run python src/researchmind/evaluation/embedding_benchmark.py
+      - uv run python src/researchmind/evaluation/faiss_benchmark.py
+      - uv run python src/researchmind/evaluation/phase3_eval.py
+      - uv run python src/researchmind/evaluation/phase4_eval.py
+      - uv run python src/researchmind/evaluation/phase5_eval.py
+      - uv run python src/researchmind/evaluation/phase6_eval.py
+
+  # ── Util ───────────────────────────────────────────────────────────────────
+
+  clean:
+    desc: Remove __pycache__ dirs and .pyc files
+    cmds:
+      - uv run python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__') if '.venv' not in str(p)]"

@@ -7,7 +7,7 @@ import httpx
 from datasets import Dataset
 import json
 import numpy as np
-import mlflow
+from researchmind.utils.experiment_logger import ExperimentLogger, MLflowLogger
 from researchmind.ingestion.models import RAGResponse
 from researchmind.evaluation.test_set_generator import TestQuery
 from ragas import evaluate
@@ -33,14 +33,6 @@ import pandas as pd
 load_dotenv()
 
 logger = logging.getLogger("RAGAS_Harness")
-
-# client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-# llm = llm_factory("claude-sonnet-4-6", client=client)
-
-# llm = ChatAnthropic(
-#     model="claude-haiku-4-5-20251001", api_key=os.environ.get("ANTHROPIC_API_KEY")
-# )
-
 llm = ChatAnthropic(
     model="claude-haiku-4-5-20251001",
     api_key=os.environ.get("ANTHROPIC_API_KEY"),
@@ -68,10 +60,10 @@ def query_rag(query: str, api_url: str, retries: int = 3) -> RAGResponse:
             response = httpx.post(api_url, json={"query": query}, timeout=120.0)
             response.raise_for_status()
             return RAGResponse(**response.json())
-        except Exception as e:
+        except Exception as exc:
             if attempt == retries - 1:
                 raise
-            logger.warning("Retry %d for query: %s", attempt + 1, query[:50])
+            logger.warning("Retry %d for query %s: %s", attempt + 1, query[:50], exc)
 
 
 def build_ragas_dataset(
@@ -129,13 +121,15 @@ def evaluate_ragas(dataset: Dataset, batch_size: int) -> dict[str, float]:
 
 
 def main(args: argparse.Namespace):
+    from researchmind.utils.config import load_phase_config
     project_root = find_project_root()
-    test_set_path = project_root / args.test_set_path
-    logger.info("Loading test queries...")
-    queries = load_queries(test_set_path)
+    cfg = load_phase_config(project_root)
 
-    # save the responses to a JSON file for later analysis and reproducibility
-    responses_output_path = project_root / args.responses_output_path
+    test_set_path = args.test_set_path or cfg.evaluation.test_set_path
+    responses_output_path = args.responses_output_path or cfg.evaluation.ragas_responses_path
+
+    logger.info("Loading test queries from %s...", test_set_path)
+    queries = load_queries(test_set_path)
 
     if not responses_output_path.exists():
         try:
@@ -188,10 +182,10 @@ def main(args: argparse.Namespace):
     for i, query in enumerate(queries):
         category_indices[query.category].append(i)
 
-    mlflow.set_experiment("RAGAS_Evaluation")
+    exp_logger: ExperimentLogger = MLflowLogger()
     # evaluate per category
     logger.info("Evaluating RAGAS metrics for each category...")
-    with mlflow.start_run(run_name="RAGAS_Evaluation_semantic") as run:
+    with exp_logger.start_run("RAGAS_Evaluation_semantic", experiment_name="RAGAS_Evaluation"):
         for category, indices in tqdm(
             category_indices.items(), desc="Evaluating categories", unit="category"
         ):
@@ -207,9 +201,8 @@ def main(args: argparse.Namespace):
             logger.info(
                 "Category '%s' evaluation completed. Scores: %s", category, cat_scores
             )
-            # log to MLflow with category prefix
             avg_scores = {k: float(np.nanmean(v)) for k, v in cat_scores.items()}
-            mlflow.log_metrics({f"{category}/{k}": v for k, v in avg_scores.items()})
+            exp_logger.log_metrics({f"{category}/{k}": v for k, v in avg_scores.items()})
             logger.info(
                 "Logged category '%s' metrics to MLflow: %s", category, avg_scores
             )
@@ -218,60 +211,27 @@ def main(args: argparse.Namespace):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="RAGAS Evaluation Harness")
     parser.add_argument(
-        "--test-set-path",
-        type=Path,
-        default=Path("data/processed/200_test_queries_set.json"),
-        help="Path to the JSON file containing the test queries. Defaults to data/processed/200_test_queries_set.json",
-    )
-    parser.add_argument(
         "--api-url",
         type=str,
-        default="http://localhost:8000/rag",
-        help="URL of the RAG API endpoint to query. Defaults to http://localhost:8000/rag",
+        default=os.environ.get("BACKEND_URL", "http://localhost:8000") + "/rag",
+        help="RAG API endpoint URL. Defaults to BACKEND_URL env var + /rag, or http://localhost:8000/rag",
     )
-    parser.add_argument(
-        "--root-dir",
-        type=Path,
-        default=find_project_root(),
-        help="Root directory of the project. Defaults to auto-detected repository root.",
-    )
-    parser.add_argument(
-        "--log-dir",
-        type=Path,
-        default=Path("logs/ragas_evaluation"),
-        help="Directory to save evaluation logs. Defaults to logs/ragas_evaluation",
-    )
-    parser.add_argument(
-        "--responses-output-path",
-        type=Path,
-        default=Path("data/processed/RAGA_responses.json"),
-        help="Path to save the raw RAG responses for later analysis. Defaults to data/processed/RAGA_responses.json",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=10,
-        help="batch size of data to send for evaluation to RAGAS. Defaults to 20",
-    )
-
-    parser.add_argument(
-        "--experiment-name",
-        type=str,
-        default="RAGAS_Evaluation_Fixed",
-        help="MLflow experiment name for logging results. Defaults to RAGAS_Evaluation",
-    )
-
+    # Optional path overrides — config values are used when not supplied
+    parser.add_argument("--test-set-path", type=Path, default=None,
+                        help="Overrides evaluation.test_set from config.")
+    parser.add_argument("--responses-output-path", type=Path, default=None,
+                        help="Overrides evaluation.ragas_responses from config.")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
     logging.basicConfig(level=logging.INFO)
-    logs_dir = args.root_dir / "logs" / "ragas_evaluation"
+    from researchmind.utils.config import load_phase_config
+    cfg = load_phase_config(find_project_root())
     session_log_path = (
-        logs_dir
-        / f"session_{args.experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        cfg.evaluation.log_dir
+        / f"session_{cfg.evaluation.experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     )
     configure_logging(session_log_path, logger)
-
     main(args)

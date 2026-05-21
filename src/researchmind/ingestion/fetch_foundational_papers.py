@@ -1,14 +1,13 @@
 """
-Snowball corpus expansion for Phase 2.
+Corpus builder for the domain-specific OOD / anomaly-detection corpus.
 
-Three passes:
-  1. Seeds  — 50 landmark ML papers fetched directly from arXiv by ID
-  2. Expand — OpenAlex referenced_works for each seed → discover cited arXiv papers
-  3. Backfill — relevance-sorted arXiv query (2018–2024) to reach TARGET quota
+Two passes:
+  1. Seeds  — landmark OOD, anomaly detection, and DINO-based CV papers fetched
+              directly from arXiv by ID.
+  2. Expand — Semantic Scholar references for each seed → discover cited arXiv papers,
+              then batch-fetch from arXiv.
 
-Output: data/processed/papers_foundational.jsonl
-This file is merged with papers.jsonl at index-build time (build_indexes.py).
-Phase 1 artifacts are untouched.
+Output: data/processed/papers.jsonl
 """
 
 import json
@@ -17,92 +16,62 @@ import time
 from datetime import date
 from pathlib import Path
 
+from dotenv import load_dotenv
 from tqdm import tqdm
 
-from researchmind.ingestion.arxiv_client import fetch_papers, fetch_papers_by_ids
-from researchmind.ingestion.openalex_client import get_referenced_arxiv_ids
+from researchmind.ingestion.discovery import ArxivSource, SemanticScholarCitationSource
 from researchmind.utils.find_root import find_project_root
 from researchmind.utils.logging import configure_logging
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
 project_root = find_project_root()
 logger = logging.getLogger(__name__)
 
-
-
-
-# 50 landmark ML papers (arXiv IDs, no version suffix)
+# Landmark papers in OOD detection, visual anomaly detection,
+# novel category discovery, DINO-based methods, and interpretable CV.
 SEEDS = [
-    # Transformers and attention
-    "1706.03762",  # Attention Is All You Need
-    "1409.0473",   # Bahdanau Attention (Neural MT)
-    "1607.06450",  # Layer Normalization
-    # BERT family
-    "1810.04805",  # BERT
-    "1907.11692",  # RoBERTa
-    "1906.08237",  # XLNet
-    "1909.11942",  # ALBERT
-    "1910.01108",  # DistilBERT
-    "1911.02116",  # XLM-R
-    # Seq2seq / T5 family
-    "1910.10683",  # T5
-    "1706.05098",  # ConvS2S
-    # GPT family
-    "2005.14165",  # GPT-3
-    "2203.15556",  # Chinchilla (scaling laws)
-    "2204.02311",  # PaLM
-    "2302.13971",  # LLaMA
-    "2307.09288",  # LLaMA 2
-    "2310.06825",  # Mistral
-    # Instruction tuning and alignment
-    "2203.02155",  # InstructGPT / RLHF
-    "2109.01652",  # FLAN
-    "2212.10560",  # Constitutional AI
-    "2305.18290",  # DPO
-    # Efficient attention
-    "2205.14135",  # FlashAttention
-    "2104.09864",  # RoPE
-    # PEFT
-    "2106.09685",  # LoRA
-    "2305.14314",  # QLoRA
-    # Prompting and reasoning
-    "2201.11903",  # Chain-of-Thought
-    "2212.09561",  # Self-Consistency
-    "2210.11610",  # ReAct
-    "2305.10601",  # Tree of Thoughts
-    # Retrieval and RAG
-    "2005.11401",  # RAG (Lewis et al.)
-    "2004.07213",  # DPR
-    "2303.11366",  # HyDE
-    "2112.09118",  # RETRO
-    # Agents and tools
-    "2302.07842",  # Toolformer
-    "2112.00114",  # WebGPT
-    # Multimodal
-    "2103.00020",  # CLIP
-    "2102.12092",  # DALL-E
-    "2112.10752",  # Latent Diffusion Models
-    # Generative models
-    "1406.2661",   # GAN
-    "1312.6114",   # VAE
-    # Vision
-    "1512.03385",  # ResNet
-    "1409.1556",   # VGGNet
-    "1506.02640",  # YOLO
-    "1512.00567",  # Inception V3
-    "2010.11929",  # Vision Transformer (ViT)
-    # Training utilities
-    "1502.03167",  # Batch Normalization
-    "1412.6980",   # Adam optimizer
-    # ELMo (pre-BERT contextual embeddings)
-    "1802.05365",  # ELMo
-    # Evaluation
-    "2108.07258",  # BIG-Bench
-    "2303.18223",  # Sparks of AGI (GPT-4 eval)
+    # OOD detection — foundational
+    "1610.02136",  # Baseline for OOD detection (Hendrycks & Gimpel)
+    "1807.03888",  # Deep Anomaly Detection with Outlier Exposure
+    "2002.11297",  # CSI: Novelty Detection via Contrastive Learning
+    "2106.03004",  # ReAct: Out-of-distribution Detection with Rectified Activations
+    "2108.11635",  # DICE: Leveraging Sparsification for OOD Detection
+    "2209.15639",  # VIM: Out-of-distribution with Virtual-logit Matching
+    "2207.07843",  # KNN-based OOD Detection
+    "2110.11334",  # OpenOOD Benchmark
+    "1706.02690",  # ODIN: Principled OOD Detection
+    "2205.00693",  # GradNorm for OOD detection
+    # Visual anomaly detection
+    "2205.09510",  # PatchCore: Towards Total Recall in Industrial Anomaly Detection
+    "2004.14435",  # Uninformed Students for Anomaly Detection
+    "2106.08265",  # PADIM: Patch Distribution Modeling
+    "2111.07677",  # SimpleNet: A Simple Network for Image Anomaly Detection
+    "2208.03943",  # RD4AD: Reverse Distillation for Anomaly Detection
+    "2203.08736",  # FastFlow: Unsupervised Anomaly Detection via NF
+    # DINO / DINOv2 based methods
+    "2104.14294",  # DINO: Self-distillation with no labels
+    "2304.07193",  # DINOv2: Learning robust visual features
+    "2209.07399",  # Masked Image Modeling with DINO features
+    # Novel category discovery / open-world recognition
+    "2004.12186",  # Automatically Discovering and Learning Novel Visual Categories
+    "2106.10272",  # Novel Class Discovery with Unified Contrastive Learning
+    "2110.03174",  # OpenLDN: Open-world Label Discovery
+    "2301.01413",  # Parametric Classification for Novel Class Discovery
+    # Prototype-based and energy-based OOD
+    "2010.03759",  # Energy-based OOD Detection
+    "2202.05575",  # Semantic Pyramid for OOD Detection (SSD)
+    "2107.02672",  # Exploring the Limits of OOD Detection
+    # Benchmarks
+    "2110.11334",  # OpenOOD
+    "2110.06207",  # CIFAR10/100 OOD benchmarks review
 ]
+
+# Deduplicate seeds in case of accidental duplicates
+SEEDS = list(dict.fromkeys(SEEDS))
+
+_arxiv = ArxivSource()
+_ss_citations = SemanticScholarCitationSource()
 
 
 def _save(papers: list[dict], path: Path) -> None:
@@ -114,11 +83,10 @@ def _save(papers: list[dict], path: Path) -> None:
 
 
 def pass1_seeds(seen_ids: set[str]) -> list[dict]:
-    """Fetch the 50 seed papers directly from arXiv by ID."""
+    """Fetch landmark domain papers directly from arXiv by ID."""
     logger.info("Pass 1: fetching %d seed papers from arXiv", len(SEEDS))
     new_ids = [pid for pid in SEEDS if pid not in seen_ids]
-    # Use arxiv api to get papers in batches
-    raw = fetch_papers_by_ids(new_ids)
+    raw = _arxiv.fetch_by_ids(new_ids)
     papers = [p.model_dump(mode="json") for p in raw]
     seen_ids.update(p["paper_id"].split("v")[0] for p in papers)
     logger.info("Pass 1 complete: %d seeds fetched", len(papers))
@@ -126,89 +94,39 @@ def pass1_seeds(seen_ids: set[str]) -> list[dict]:
 
 
 def pass2_expand(seen_ids: set[str]) -> list[dict]:
-    """
-    For each seed, call OpenAlex to get its reference list, resolve those
-    to arXiv IDs, then batch-fetch from arXiv.
+    """Fetch references for each seed via Semantic Scholar, then pull from arXiv.
 
-    This is snowball sampling depth=1 (outbound edges only).
-    Deeper traversal would be exponential and is unnecessary for corpus quality.
+    Depth-1 outbound expansion only — going deeper is exponential and
+    hurts corpus precision for a domain-specific build.
     """
-    logger.info("Pass 2: citation expansion via OpenAlex referenced_works")
+    logger.info("Pass 2: citation expansion via Semantic Scholar references")
     discovered: set[str] = set()
 
-    for seed_id in tqdm(SEEDS, desc="OpenAlex expansion"):
-        ref_ids = get_referenced_arxiv_ids(seed_id)
+    for seed_id in tqdm(SEEDS, desc="SS expansion"):
+        ref_ids = _ss_citations.get_references(seed_id)
         for rid in ref_ids:
             normalised = rid.split("v")[0]
             if normalised not in seen_ids:
                 discovered.add(normalised)
-        time.sleep(0.2)  # polite inter-seed delay
+        time.sleep(0.5)
 
-    logger.info("Discovered %d unique referenced papers via OpenAlex", len(discovered))
-
+    logger.info("Discovered %d unique referenced papers via SS", len(discovered))
     if not discovered:
         return []
 
-    # get papers from arxiv in batches
-    raw = fetch_papers_by_ids(list(discovered))
+    raw = _arxiv.fetch_by_ids(list(discovered))
     papers = [p.model_dump(mode="json") for p in raw]
     seen_ids.update(p["paper_id"].split("v")[0] for p in papers)
     logger.info("Pass 2 complete: %d expanded papers fetched", len(papers))
     return papers
 
 
-def pass3_backfill(seen_ids: set[str], quota: int, categories: list[str], start_date: date, end_date: date) -> list[dict]:
-    """
-    Fill remaining quota with relevance-sorted arXiv results (2018–2024).
-    Uses submittedDate filter so we don't waste max_results scanning 2025-2026.
-    """
-    if quota <= 0:
-        logger.info("Pass 3: quota already met, skipping backfill")
-        return []
-
-    logger.info("Pass 3: backfill %d papers from arXiv relevance query", quota)
-    raw = fetch_papers(
-        categories=categories,
-        start_date=start_date,
-        end_date=end_date,
-        max_results=quota + 200,  # overfetch to account for dedup loss
-    )
-    papers = []
-    for p in raw:
-        normalised = p.paper_id.split("v")[0]
-        if normalised not in seen_ids:
-            papers.append(p.model_dump(mode="json"))
-            seen_ids.add(normalised)
-            if len(papers) >= quota:
-                break
-
-    logger.info("Pass 3 complete: %d backfill papers added", len(papers))
-    return papers
-
-def pass_yearly_fill(seen_ids: set[str], quota: int,  categories: list[str], start_date: date, end_date: date) -> list[dict]:
-    logger.info("Pass 3: backfill %d papers from arXiv relevance query, year-by-year", quota)
-    papers_per_year = quota // (end_date.year - start_date.year + 1)
-    papers = []
-    for year in range(start_date.year, end_date.year + 1):
-        yearly = fetch_papers(
-            categories=categories,
-            start_date=date(year, 1, 1),
-            end_date=date(year, 12, 31),
-            max_results=papers_per_year + 50,  # small overfetch for dedup loss
-        )
-        for p in yearly:
-            normalised = p.paper_id.split("v")[0]
-            if normalised not in seen_ids:
-                papers.append(p.model_dump(mode="json"))
-                seen_ids.add(normalised)
-        logger.info("Year %d: %d papers added, total so far: %d", year, len(papers), len(papers))
-        time.sleep(5)
-        if len(papers) >= quota:
-            break
-    logger.info("Pass 3 complete: %d backfill papers added", len(papers))
-    return papers
-
-def fetch_foundational_papers(categories, start_date, end_date, max_results) -> None:
+def fetch_foundational_papers(
+    categories: list[str],
+    start_date: date,
+    end_date: date,
+    max_results: int,
+) -> None:
     configure_logging(project_root / "logs" / "fetch_foundational.log", logger)
     seen_ids: set[str] = set()
     all_papers: list[dict] = []
@@ -216,18 +134,45 @@ def fetch_foundational_papers(categories, start_date, end_date, max_results) -> 
     seeds = pass1_seeds(seen_ids)
     all_papers.extend(seeds)
 
-    # expanded = pass2_expand(seen_ids)
-    # all_papers.extend(expanded)
+    expanded = pass2_expand(seen_ids)
+    all_papers.extend(expanded)
 
+    # Backfill remaining quota with category + date range search if needed
     remaining = max_results - len(all_papers)
-    time.sleep(30)
-    backfill = pass_yearly_fill(seen_ids, remaining, categories, start_date, end_date)
-    all_papers.extend(backfill)
+    if remaining > 0:
+        logger.info("Pass 3: backfill %d papers from arXiv category search", remaining)
+        time.sleep(10)
+        for year in range(start_date.year, end_date.year + 1):
+            yearly = _arxiv.fetch_by_query(
+                categories=categories,
+                start_date=date(year, 1, 1),
+                end_date=date(year, 12, 31),
+                max_results=remaining + 50,
+            )
+            added_this_year = 0
+            for p in yearly:
+                norm = p.paper_id.split("v")[0]
+                if norm not in seen_ids:
+                    all_papers.append(p.model_dump(mode="json"))
+                    seen_ids.add(norm)
+                    added_this_year += 1
+            logger.info("Year %d: added %d papers, total so far: %d", year, added_this_year, len(all_papers))
+            time.sleep(5)
+            if len(all_papers) >= max_results:
+                break
 
     out_path = project_root / "data" / "processed" / "papers.jsonl"
     _save(all_papers, out_path)
-    logger.info("Done. Total papers: %d / %d max_results", len(all_papers), max_results)
+    logger.info("Done. Total: %d / %d max_results", len(all_papers), max_results)
 
 
 if __name__ == "__main__":
-    fetch_foundational_papers()
+    from researchmind.utils.config import load_phase_config
+
+    cfg = load_phase_config(project_root)
+    fetch_foundational_papers(
+        categories=cfg.corpus.categories,
+        start_date=date.fromisoformat(cfg.corpus.date_from),
+        end_date=date.fromisoformat(cfg.corpus.date_to),
+        max_results=cfg.corpus.max_results,
+    )

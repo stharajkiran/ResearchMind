@@ -169,21 +169,21 @@ def generate_test_set(
 
 
 def main():
-    # Load chunks
-    with open("data/processed/cleaned_chunks.jsonl", "r") as f:
+    from researchmind.utils.config import load_phase_config
+    from researchmind.utils.find_root import find_project_root
+    cfg = load_phase_config(find_project_root())
+
+    with cfg.index.chunks_path.open("r") as f:
         chunks = [Chunk(**json.loads(line)) for line in f if line.strip()]
+    logger.info("Loaded %d chunks for test set generation.", len(chunks))
 
-    logger.info(f"Loaded {len(chunks)} chunks for test set generation.")
-    # Generate test queries from the sampled chunks
     test_set = generate_test_set(chunks)
+    logger.info("Generated %d test queries across %d categories.", len(test_set), len(CATEGORIES))
 
-    logger.info(
-        f"Generated {len(test_set)} test queries across {len(CATEGORIES)} categories."
-    )
-    # Save the test set to a JSON file
-    with open("data/processed/200_test_queries_set.json", "w") as f:
+    cfg.evaluation.test_set_path.parent.mkdir(parents=True, exist_ok=True)
+    with cfg.evaluation.test_set_path.open("w") as f:
         json.dump([t.model_dump(mode="json") for t in test_set], f, indent=2)
-    logger.info(f"Generated test set with {len(test_set)} queries.")
+    logger.info("Saved test set to %s.", cfg.evaluation.test_set_path)
 
 
 if __name__ == "__main__":

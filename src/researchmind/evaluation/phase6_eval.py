@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import httpx
 import numpy as np
@@ -15,7 +16,7 @@ log_dir = project_root / "logs" / "phase_6" / "phase6_eval.log"
 logger = logging.getLogger(__name__)
 configure_logging(log_dir, logger)
 
-API_BASE = "http://localhost:8000"
+API_BASE = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 
 def run_latency_benchmark(

@@ -22,7 +22,7 @@ from researchmind.retrieval.vector_store import VectorStore
 from researchmind.session.cache import QueryCache
 from researchmind.session.memory import SessionMemory
 from researchmind.utils.llm_client import ResearchMindLLM
-from researchmind.feedback.store import FeedbackStore
+from researchmind.feedback.interfaces import FeedbackStore
 
 
 
