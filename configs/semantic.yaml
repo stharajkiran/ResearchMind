@@ -1,4 +1,4 @@
-phase: semantic
+name: semantic
 
 corpus:
   categories: ["cs.CV", "cs.LG", "cs.AI"]
@@ -16,6 +16,13 @@ corpus:
   max_results: 8000
 
 ingestion:
+  discovery:
+    sources: [arxiv, ss_search, ss_recommendations]
+    ss_search:
+      max_per_query: 200
+    ss_recommendations:
+      seed_set: ood_detection
+      max_recommendations: 500
   paths:
     pdf_dir:       data/raw/arxiv_pdfs_semantic
     papers:        data/processed/semantic_papers.jsonl

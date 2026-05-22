@@ -62,25 +62,25 @@ tasks:
   # ── Artifacts ──────────────────────────────────────────────────────────────
 
   ingest:
-    desc: Run ingestion pipeline (INDEX_PHASE={{.PHASE}})
+    desc: Run ingestion pipeline (CONFIG_NAME={{.PHASE}})
     cmds:
       - uv run python -m researchmind.ingestion.pipeline
     env:
-      INDEX_PHASE: '{{.PHASE}}'
+      CONFIG_NAME: '{{.PHASE}}'
 
   citation-graph:
-    desc: Build citation graph (INDEX_PHASE={{.PHASE}})
+    desc: Build citation graph (CONFIG_NAME={{.PHASE}})
     cmds:
       - uv run python -m researchmind.graph.citation_graph
     env:
-      INDEX_PHASE: '{{.PHASE}}'
+      CONFIG_NAME: '{{.PHASE}}'
 
   indexes:
-    desc: Build FAISS + BM25 indexes (INDEX_PHASE={{.PHASE}})
+    desc: Build FAISS + BM25 indexes (CONFIG_NAME={{.PHASE}})
     cmds:
       - uv run python scripts/build_indexes.py
     env:
-      INDEX_PHASE: '{{.PHASE}}'
+      CONFIG_NAME: '{{.PHASE}}'
 
   artifacts:
     desc: Run full artifact pipeline — ingest, citation graph, indexes
@@ -95,19 +95,19 @@ tasks:
   # ── Run ────────────────────────────────────────────────────────────────────
 
   api:
-    desc: Start FastAPI on :8000 (INDEX_PHASE={{.PHASE}})
+    desc: Start FastAPI on :8000 (CONFIG_NAME={{.PHASE}})
     deps: [services]
     cmds:
       - uv run uvicorn api.app:app --host 0.0.0.0 --port 8000
     env:
-      INDEX_PHASE: '{{.PHASE}}'
+      CONFIG_NAME: '{{.PHASE}}'
 
   demo:
     desc: Start FastAPI in demo mode — no Ollama needed
     cmds:
       - uv run uvicorn api.app:app --host 0.0.0.0 --port 8000
     env:
-      INDEX_PHASE: demo
+      CONFIG_NAME: demo
 
   ui:
     desc: Start Streamlit on :8501

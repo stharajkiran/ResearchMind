@@ -1,4 +1,4 @@
-phase: phase2
+name: phase2
 
 corpus:
   categories: ["cs.LG", "cs.AI", "cs.CL"]
@@ -8,6 +8,8 @@ corpus:
   max_results: 8000
 
 ingestion:
+  discovery:
+    sources: [arxiv]   # broad LM corpus — no domain-specific SS seeds
   paths:
     pdf_dir:       data/raw/arxiv_pdfs
     papers:        data/processed/papers.jsonl

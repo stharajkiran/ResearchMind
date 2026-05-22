@@ -1,0 +1,53 @@
+name: full
+
+corpus:
+  categories: ["cs.CV", "cs.LG"]
+  keywords:
+    - "anomaly detection"
+    - "out-of-distribution"
+  date_from: "2018-01-01"
+  date_to:   "2025-12-31"
+  max_results: 1000
+
+ingestion:
+  discovery:
+    sources: [arxiv, ss_recommendations, ss_search]
+    ss_search:
+      max_per_query: 500
+    ss_recommendations:
+      seed_set: ood_detection
+      max_recommendations: 500
+  paths:
+    pdf_dir:       data/raw/full/arxiv_ss2
+    papers:        data/processed/full/arxiv_ss2.jsonl
+    parsed_papers: data/processed/full/arxiv_ss2_parsed_papers.jsonl
+    raw_chunks:    data/processed/full/arxiv_ss2_fixed_chunks.jsonl
+  download:
+    concurrency:     10
+    timeout_seconds: 30
+  chunking:
+    strategy:     section
+    max_words:    400
+    overlap_words: 50
+
+index:
+  chunks:       data/processed/${name}/arxiv_ss2_final_chunks.jsonl
+  artifact_dir: artifacts/indexes/${name}
+  type:         HNSW32
+  vector_backend: faiss
+
+model:
+  embedding: sentence-transformers/all-mpnet-base-v2
+  llm:
+    # Haiku replaces Ollama — no local models needed for demo
+    fast:   {model: "claude-haiku-4-5-20251001", provider: anthropic}
+    medium: {model: "claude-haiku-4-5-20251001", provider: anthropic}
+    strong: {model: "deepseek-chat",             provider: openai}
+    best:   {model: "claude-sonnet-4-6",         provider: anthropic}
+
+evaluation:
+  test_set:        data/processed/${name}/test_queries.json
+  ragas_responses: data/processed/${name}/ragas_responses.json
+  log_dir:         logs/ragas_evaluation/${name}
+  batch_size:      10
+  experiment_name: RAGAS_Evaluation_${name}

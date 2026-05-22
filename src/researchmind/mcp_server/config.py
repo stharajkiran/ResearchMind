@@ -10,7 +10,7 @@ class Config:
     "Configuration for API, including logging and any other global setup."
 
     project_root = project_root
-    phase = os.environ.get("INDEX_PHASE", "phase2")
+    phase = os.environ.get("CONFIG_NAME", "phase2")
     artifact_dir = project_root / "artifacts" / "indexes" / phase
     if phase == "semantic":
         chunks_path = (

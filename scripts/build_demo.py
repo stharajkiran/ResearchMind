@@ -9,10 +9,7 @@ import httpx
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from researchmind.ingestion.discovery import (
-    ArxivSource,
-    SemanticScholarRecommendationSource,
-)
+from researchmind.ingestion.discovery import ArxivSource, SemanticScholarRecommendationSource
 from researchmind.utils.find_root import find_project_root
 
 load_dotenv()
@@ -154,7 +151,8 @@ def run_ssd_fetch_and_save():
 
 def run_ss2_recommendation_fetch_and_save():
     logger.info("run_ss2_recommendation_fetch_and_save: starting")
-    papers = SemanticScholarRecommendationSource().fetch_by_ids(OOD_SEED_IDS)
+    arxiv_ids = SemanticScholarRecommendationSource().collect_ids(OOD_SEED_IDS)
+    papers = ArxivSource().fetch_by_ids(arxiv_ids)
     output_path = project_root / "data" / "processed" / "demo" / "ss2_recommendation_demo_papers.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:

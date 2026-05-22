@@ -143,7 +143,7 @@ def parse_pdfs(
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Parse arXiv PDFs into structured JSONL. "
-                    "Paths default to the active phase config (INDEX_PHASE env var)."
+                    "Paths default to the active phase config (CONFIG_NAME env var)."
     )
     parser.add_argument("--pdf-dir", type=Path, default=None,
                         help="Directory of downloaded PDFs (overrides config)")
@@ -166,7 +166,7 @@ def main() -> None:
     papers_path = args.papers_path or cfg.ingestion.papers_path
     output_path = args.output_path or cfg.ingestion.parsed_papers_path
 
-    logger.info("Parsing PDFs | phase=%s pdf_dir=%s", cfg.phase, pdf_dir)
+    logger.info("Parsing PDFs | phase=%s pdf_dir=%s", cfg.name, pdf_dir)
     parsed, skipped, failed = parse_pdfs(
         pdf_dir=pdf_dir,
         papers_path=papers_path,

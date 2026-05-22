@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
     # Configure logging once at startup
     configure_api_logging()
     logger.info("API startup")
-    logger.info("Loading retriever with phase=%s", phase_config.phase)
+    logger.info("Loading retriever with phase=%s", phase_config.name)
     logger.info("Artifact dir: %s", phase_config.artifact_dir)
     logger.info("Chunks path: %s", phase_config.chunks_path)
 

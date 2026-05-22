@@ -62,7 +62,7 @@ if __name__ == "__main__":
     configure_logging(
         logs_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log", logger
     )
-    logger.info("Building indexes for phase=%s, backend=%s", cfg.phase, cfg.index.vector_backend)
+    logger.info("Building indexes for phase=%s, backend=%s", cfg.name, cfg.index.vector_backend)
 
     encoder = MPNetEncoder()
     sparse = BM25IndexBuilder(artifact_dir=cfg.index.artifact_dir)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     if cfg.index.vector_backend == "qdrant":
         from researchmind.retrieval.backends.qdrant_backend import QdrantBackend
         dense = QdrantBackend(
-            collection_name=f"researchmind_{cfg.phase}",
+            collection_name=f"researchmind_{cfg.name}",
             encoder=encoder,
             dimension=encoder.dim,
         )

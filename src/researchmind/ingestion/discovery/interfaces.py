@@ -45,3 +45,25 @@ class PaperEnricher(ABC):
     def enrich(self, papers: list[RawPaper]) -> list[RawPaper]:
         """Return enriched copies of the input papers. Input papers are not mutated."""
         ...
+
+
+class PaperIDSource(ABC):
+    """Discovers arXiv IDs from an external source without fetching full metadata.
+
+    Returns IDs only so multiple sources can be combined before a single
+    ArxivSource.fetch_by_ids call:
+
+        ids = set()
+        ids.update(ss_search.collect_ids(queries))
+        ids.update(ss_recs.collect_ids(seed_ids))
+        papers = ArxivSource().fetch_by_ids(list(ids))
+
+    The meaning of `identifiers` differs per implementation:
+      SemanticScholarSearch       — list of keyword query strings
+      SemanticScholarRecommendationSource — list of SS paper IDs (seeds)
+    """
+
+    @abstractmethod
+    def collect_ids(self, identifiers: list[str]) -> list[str]:
+        """Return deduplicated arXiv IDs discovered from the given identifiers."""
+        ...

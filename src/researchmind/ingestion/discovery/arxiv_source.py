@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import date
 
 import arxiv
@@ -10,7 +11,24 @@ from researchmind.ingestion.models import RawPaper
 logger = logging.getLogger(__name__)
 
 _BATCH_SIZE = 200
-_CLIENT_DEFAULTS = dict(page_size=100, delay_seconds=10.0, num_retries=3)
+_CLIENT_DEFAULTS = dict(page_size=100, delay_seconds=15.0, num_retries=5)
+_RETRY_DELAYS = [30, 60, 120]  # seconds to wait after consecutive 429s
+
+
+def _collect_results(client: arxiv.Client, search: arxiv.Search) -> list[arxiv.Result]:
+    """Collect all results with exponential backoff on arXiv 429 rate-limits."""
+    delays = [0] + _RETRY_DELAYS
+    for attempt, delay in enumerate(delays):
+        if delay:
+            logger.warning("arXiv 429 — retrying in %ds (attempt %d/%d)", delay, attempt, len(delays) - 1)
+            time.sleep(delay)
+        try:
+            return list(client.results(search))
+        except Exception as exc:
+            if "429" in str(exc) and attempt < len(delays) - 1:
+                continue
+            raise
+    return []
 
 
 def _to_raw_paper(result: arxiv.Result) -> RawPaper:
@@ -58,7 +76,7 @@ class ArxivSource(PaperSource):
         )
         papers: list[RawPaper] = []
         skipped = 0
-        for result in tqdm(client.results(search), desc="arXiv query"):
+        for result in tqdm(_collect_results(client, search), desc="arXiv query"):
             pub = result.published.date()
             if pub < start_date:
                 break
@@ -79,7 +97,8 @@ class ArxivSource(PaperSource):
             batch = paper_ids[i : i + _BATCH_SIZE]
             client = arxiv.Client(**_CLIENT_DEFAULTS)
             search = arxiv.Search(id_list=batch)
-            for result in tqdm(client.results(search), desc="arXiv ID fetch", total=len(batch)):
+            results = _collect_results(client, search)
+            for result in tqdm(results, desc="arXiv ID fetch", total=len(batch)):
                 all_papers.append(_to_raw_paper(result))
         logger.info("fetch_by_ids: returned %d papers for %d requested IDs", len(all_papers), len(paper_ids))
         return all_papers
