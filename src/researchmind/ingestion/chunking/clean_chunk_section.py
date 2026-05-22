@@ -18,26 +18,79 @@ HEADING_CANONICAL_SET = [
     "experiment",
     "method",
     "discussion",
-    "futurework",
-    "approach",
     "limitation",
-    "ablationstudy"
+    "ablationstudy",
+    "dataset",
 ]
 SECTION_MAP = {
+    # abstract / intro / background
     "abstracts": "abstract",
     "introductions": "introduction",
+    "overview": "introduction",
+    "motivation": "introduction",
+    "contributions": "introduction",
+    "contribution": "introduction",
     "backgrounds": "background",
+    "preliminaries": "background",
+    "notation": "background",
+    # related work
     "related works": "related work",
+    "literature review": "related work",
+    "prior work": "related work",
+    # method — approach, model, and architecture all map here
     "methods": "method",
     "methodology": "method",
     "methodologies": "method",
-    "approaches": "approach",
+    "approach": "method",
+    "approaches": "method",
+    "model": "method",
+    "models": "method",
+    "implementation details": "method",
+    "implementation detail": "method",
+    "implementation": "method",
+    "architecture": "method",
+    "framework": "method",
+    "system": "method",
+    "inference": "method",
+    "problem formulation": "method",
+    "problem statement": "introduction",
+    # experiment
     "experiments": "experiment",
+    "experimental setup": "experiment",
+    "setup": "experiment",
+    "training": "experiment",
+    "training details": "experiment",
+    "evaluation": "experiment",
+    "baseline": "experiment",
+    "baselines": "experiment",
+    "comparison": "experiment",
+    "comparisons": "experiment",
+    # result
     "results": "result",
+    "analysis": "result",
+    "findings": "result",
+    "finding": "result",
+    "error analysis": "result",
+    # conclusion — future work folds in here
     "discussions": "discussion",
     "conclusions": "conclusion",
-    "references": "reference",    
+    "future work": "conclusion",
+    "futurework": "conclusion",
+    # dataset
+    "datasets": "dataset",
+    "data": "dataset",
+    "data collection": "dataset",
+    # misc
+    "references": "reference",
+    "ablation": "ablationstudy",
 }
+
+_FILTERED_SECTIONS = {
+    "fulltext", "reference",
+    "acknowledgments", "acknowledgements", "acknowledgment",
+    "appendix", "supplementarymaterial", "supplementary",
+}
+_MIN_WORDS = 20
 
 def clean_header(section: str) -> str:
     # remove numbers and punctuation, keep only words using re
@@ -54,11 +107,11 @@ def map_to_canonical(section: str) -> str:
     cleaned = clean_header(section)
     if cleaned in HEADING_CANONICAL_SET:
         return cleaned
-    # check if cleaned is in part of HEADING_CANONICAL_SET
-    for canonical in HEADING_CANONICAL_SET:
-        if canonical in cleaned:
-            return canonical
-
+    # Substring match — longest canonical wins to avoid "result" beating
+    # "experiment" in "experimentalresults"
+    matches = [c for c in HEADING_CANONICAL_SET if c in cleaned]
+    if matches:
+        return max(matches, key=len)
     for key, value in SECTION_MAP.items():
         if cleaned == key.replace(" ", ""):
             return value.replace(" ", "")
@@ -77,7 +130,11 @@ def clean_section(chunks_path: Path = None) -> list[dict]:
     for chunk in chunks:
         chunk["section"] = map_to_canonical(chunk["section"])
 
-    chunks = [chunk for chunk in chunks if chunk["section"] not in ["fulltext", "reference"]]
+    chunks = [
+        chunk for chunk in chunks
+        if chunk["section"] not in _FILTERED_SECTIONS
+        and len(chunk["text"].split()) >= _MIN_WORDS
+    ]
 
     chunks_sections = [chunk["section"] for chunk in chunks]
     logger.info("Total chunks after cleaning: %d", len(chunks))

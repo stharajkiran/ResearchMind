@@ -21,7 +21,7 @@ ingestion:
     ss_search:
       max_per_query: 200
     ss_recommendations:
-      seed_set: ood_detection
+      seed_sets: [ood_detection]
       max_recommendations: 500
   paths:
     pdf_dir:       data/raw/arxiv_pdfs_semantic
@@ -39,6 +39,7 @@ ingestion:
 index:
   chunks:        data/processed/cleaned_semantic_chunks.jsonl
   artifact_dir:  artifacts/indexes/semantic
+  graph:         artifacts/citation_graph/semantic/citation_graph.pkl
   type:          HNSW32
   vector_backend: faiss
 

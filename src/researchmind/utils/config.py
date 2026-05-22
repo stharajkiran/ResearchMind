@@ -63,6 +63,7 @@ class IngestionConfig:
 class IndexConfig:
     chunks_path: Path
     artifact_dir: Path
+    graph_path: Path
     index_type: str
     vector_backend: str
 
@@ -129,8 +130,12 @@ def load_phase_config(project_root: Path | None = None) -> PhaseConfig:
     ck = ing_raw.get("chunking", {})
     disc_raw = ing_raw.get("discovery", {})
     rec_raw = disc_raw.get("ss_recommendations", {})
-    seed_set = rec_raw.get("seed_set")
-    seed_ids = all_seeds.get(seed_set, []) if seed_set else []
+    seed_sets = rec_raw.get("seed_sets", [])
+    if isinstance(seed_sets, str):
+        seed_sets = [seed_sets]
+    seed_ids: list[str] = []
+    for seed_set in seed_sets:
+        seed_ids.extend(all_seeds.get(seed_set, []))
 
     discovery = DiscoveryConfig(
         sources=disc_raw.get("sources", ["arxiv"]),
@@ -156,6 +161,7 @@ def load_phase_config(project_root: Path | None = None) -> PhaseConfig:
     index = IndexConfig(
         chunks_path=root / idx_raw["chunks"],
         artifact_dir=root / idx_raw["artifact_dir"],
+        graph_path=root / idx_raw["graph"],
         index_type=idx_raw["type"],
         vector_backend=idx_raw["vector_backend"],
     )

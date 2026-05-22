@@ -21,10 +21,12 @@ logger = logging.getLogger(__name__)
 def run(papers: list[RawPaper], output_path: Path, enrich: bool = True) -> None:
     """Enrich papers with SS metadata and write to JSONL."""
     if enrich:
+        logger.info("Enriching papers with Semantic Scholar metadata...")
         from researchmind.ingestion.discovery.semantic_scholar_enricher import SemanticScholarEnricher
         logger.info("Enriching %d papers with Semantic Scholar metadata...", len(papers))
         papers = SemanticScholarEnricher().enrich(papers)
 
+    logger.info("Writing %d papers to %s", len(papers), output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as out:
         for paper in papers:
@@ -88,6 +90,7 @@ def main() -> None:
         logger.info("arxiv: fetched %d papers", len(arxiv_papers))
 
     if extra_ids:
+        logger.info("Total unique extra IDs from SS sources: %d", len(extra_ids))
         existing_ids = {p.paper_id.split("v")[0] for p in papers}
         new_ids = [pid for pid in extra_ids if pid.split("v")[0] not in existing_ids]
         if new_ids:

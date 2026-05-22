@@ -46,7 +46,7 @@ class SectionChunker(Chunker):
                 step = self.max_words - self.overlap_words
                 for i, start in enumerate(range(0, len(words), step)):
                     window = words[start : start + self.max_words]
-                    if not window:
+                    if not window or len(window) < self.overlap_words:
                         break
                     chunks.append(
                         Chunk(

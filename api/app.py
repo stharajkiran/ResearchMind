@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     app.state.query_cache = QueryCache(backend=redis_backend)
 
     configure_tracing()
-    citation_graph = load_graph(project_root / "artifacts" / "citation_graph.pkl")
+    citation_graph = load_graph(cfg.index.graph_path)
     pipeline = ValidatorPipeline(
         app.state.retriever.corpus_paper_ids, app.state.retriever.encoder
     )

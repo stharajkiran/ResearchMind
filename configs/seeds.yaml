@@ -1,6 +1,6 @@
 # Semantic Scholar paper IDs used as seeds for recommendation-based discovery.
-# Each key is a named seed set referenced from ingestion.discovery.ss_recommendations.seed_set
-# in phase configs. Add new domains here without touching the phase configs.
+# Each key is a named seed set referenced from ingestion.discovery.ss_recommendations.seed_sets
+# in phase configs (accepts a list). Add new domains here without touching the phase configs.
 
 ood_detection:
   - "6ff2a434578ff2746b9283e45abf296887f48a2d"
@@ -16,3 +16,13 @@ ood_detection:
   - "a23c0a89bd21bd2481fedcdd6d1ac891c6c06bdc"
   - "aa207668318fec38d60b79f407fb64982e46fce9"
   - "60264ea13394896aeb7bb514f761a287cab1a54d"
+
+anomaly_detection:
+  - "0535625be630c6a67f4c244ebf3aa61ad088fc70"
+  - "83996f9214d998ffb5ea8c2ea6104e96584f587b"
+  - "72afa0fd1263d4ec60be39ed31be6755fdbaafa1"
+  - "e0f73e991514450bb0f14f799878d84adc8601f9"
+  - "1eb1c5f369da4f90c8f763f778a21c49cc605117"
+  - "388645c44061f6e88fff0ecdad2f622936207d67"
+  - "3aa681914a7da79f7d7293f51a058eefe61c8bb7"
+  - "48f9a48aa5b1230b05a443d2d531e6441a541686"

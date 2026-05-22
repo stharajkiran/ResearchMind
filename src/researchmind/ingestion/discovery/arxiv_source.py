@@ -10,8 +10,9 @@ from researchmind.ingestion.models import RawPaper
 
 logger = logging.getLogger(__name__)
 
-_BATCH_SIZE = 200
-_CLIENT_DEFAULTS = dict(page_size=100, delay_seconds=15.0, num_retries=5)
+_BATCH_SIZE = 100
+_QUERY_CLIENT = dict(page_size=100, delay_seconds=15.0, num_retries=1)
+_ID_CLIENT = dict(page_size=100, delay_seconds=5.0, num_retries=1)
 _RETRY_DELAYS = [30, 60, 120]  # seconds to wait after consecutive 429s
 
 
@@ -68,24 +69,22 @@ class ArxivSource(PaperSource):
             query = f"{cat_clause} AND {kw_clause} AND {date_filter}"
         else:
             query = f"{cat_clause} AND {date_filter}"
-        client = arxiv.Client(**_CLIENT_DEFAULTS)
+        client = arxiv.Client(**_QUERY_CLIENT)
         search = arxiv.Search(
             query=query,
             max_results=max_results,
-            sort_by=arxiv.SortCriterion.SubmittedDate,
+            sort_by=arxiv.SortCriterion.Relevance,
         )
         papers: list[RawPaper] = []
-        skipped = 0
+        out_of_range = 0
         for result in tqdm(_collect_results(client, search), desc="arXiv query"):
             pub = result.published.date()
-            if pub < start_date:
-                break
-            if pub > end_date:
-                skipped += 1
+            if pub < start_date or pub > end_date:
+                out_of_range += 1
                 continue
             papers.append(_to_raw_paper(result))
-        if skipped:
-            logger.warning("Skipped %d papers published after end_date", skipped)
+        if out_of_range:
+            logger.warning("Skipped %d papers outside date range", out_of_range)
         logger.info("fetch_by_query: returned %d papers", len(papers))
         return papers
 
@@ -95,10 +94,12 @@ class ArxivSource(PaperSource):
         all_papers: list[RawPaper] = []
         for i in range(0, len(paper_ids), _BATCH_SIZE):
             batch = paper_ids[i : i + _BATCH_SIZE]
-            client = arxiv.Client(**_CLIENT_DEFAULTS)
-            search = arxiv.Search(id_list=batch)
-            results = _collect_results(client, search)
-            for result in tqdm(results, desc="arXiv ID fetch", total=len(batch)):
-                all_papers.append(_to_raw_paper(result))
+            try:
+                client = arxiv.Client(**_ID_CLIENT)
+                search = arxiv.Search(id_list=batch)
+                for result in tqdm(list(client.results(search)), desc="arXiv ID fetch", total=len(batch)):
+                    all_papers.append(_to_raw_paper(result))
+            except Exception as exc:
+                logger.warning("fetch_by_ids batch %d-%d failed (%s) — skipping", i, i + len(batch), exc)
         logger.info("fetch_by_ids: returned %d papers for %d requested IDs", len(all_papers), len(paper_ids))
         return all_papers

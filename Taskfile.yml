@@ -1,14 +1,14 @@
 version: '3'
 
 vars:
-  PHASE: '{{.PHASE | default "phase2"}}'
+  PHASE: '{{.PHASE | default "full"}}'
 
 tasks:
 
-  # ── Setup ──────────────────────────────────────────────────────────────────
+  # ── 1. Setup (run once) ────────────────────────────────────────────────────
 
   setup:
-    desc: Copy .env.example to .env and install deps
+    desc: "1. Copy .env.example → .env and install dependencies"
     deps: [deps]
     cmds:
       - cmd: copy .env.example .env
@@ -19,105 +19,152 @@ tasks:
       - test -f .env
 
   deps:
-    desc: Install Python dependencies
+    desc: "Install Python dependencies via uv"
     cmds:
       - uv sync
 
   hooks:
-    desc: Install and run pre-commit hooks against all files
+    desc: "Install and run pre-commit hooks against all files"
     cmds:
       - uv run pre-commit install
       - uv run pre-commit run --all-files
 
-  # ── Services ───────────────────────────────────────────────────────────────
-
-  services:
-    desc: Start Redis, Postgres, MLflow (detached)
-    cmds:
-      - docker compose up redis postgres mlflow -d
-
-  services:all:
-    desc: Start all services including Prometheus + Grafana
-    cmds:
-      - docker compose up -d
-
-  services:down:
-    desc: Stop all services
-    cmds:
-      - docker compose down
-
-  monitoring:
-    desc: Start Prometheus + Grafana only
-    cmds:
-      - docker compose up prometheus grafana -d
-
-  # ── Ollama ─────────────────────────────────────────────────────────────────
-
   ollama:
-    desc: Pull Ollama models (qwen3.5:9b, qwen3.6:27b)
+    desc: "Pull required Ollama models (qwen3.5:9b, qwen3.6:27b)"
     cmds:
       - ollama pull qwen3.5:9b
       - ollama pull qwen3.6:27b
 
-  # ── Artifacts ──────────────────────────────────────────────────────────────
+  # ── 2. Services (start before API) ────────────────────────────────────────
+
+  services:
+    desc: "2. Start Redis, Postgres, MLflow in background (required for API)"
+    cmds:
+      - docker compose up redis postgres mlflow -d
+
+  services:all:
+    desc: "2. Start all services including Prometheus + Grafana"
+    cmds:
+      - docker compose up -d
+
+  services:down:
+    desc: "Stop all running services"
+    cmds:
+      - docker compose down
+
+  monitoring:
+    desc: "Start Prometheus + Grafana monitoring stack only"
+    cmds:
+      - docker compose up prometheus grafana -d
+
+  # ── 3. Ingestion (run steps in order: 3a → 3b → 3c → 3d) ─────────────────
+
+  discover:
+    desc: "3a. Discover papers from arXiv + Semantic Scholar → papers.jsonl"
+    cmds:
+      - uv run python -m researchmind.ingestion.discovery.pipeline
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
+
+  download:
+    desc: "3b. Download PDFs for all discovered papers"
+    cmds:
+      - uv run python -m researchmind.ingestion.download.pipeline
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
+
+  parse:
+    desc: "3c. Parse PDFs → structured sections (parsed_papers.jsonl)"
+    cmds:
+      - uv run python -m researchmind.ingestion.parsing.pdf_parser
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
+
+  chunk:
+    desc: "3d. Chunk + canonicalise sections → cleaned chunks.jsonl"
+    cmds:
+      - uv run python -m researchmind.ingestion.chunking.pipeline
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
 
   ingest:
-    desc: Run ingestion pipeline (CONFIG_NAME={{.PHASE}})
+    desc: "3. Run full ingestion pipeline (3a → 3b → 3c → 3d)"
     cmds:
       - uv run python -m researchmind.ingestion.pipeline
     env:
       CONFIG_NAME: '{{.PHASE}}'
 
+  # ── 4. Artifacts (run after ingestion: 4a → 4b) ───────────────────────────
+
   citation-graph:
-    desc: Build citation graph (CONFIG_NAME={{.PHASE}})
+    desc: "4a. Build citation graph from ingested papers"
     cmds:
       - uv run python -m researchmind.graph.citation_graph
     env:
       CONFIG_NAME: '{{.PHASE}}'
 
   indexes:
-    desc: Build FAISS + BM25 indexes (CONFIG_NAME={{.PHASE}})
+    desc: "4b. Build FAISS dense + BM25 sparse indexes from chunks"
     cmds:
       - uv run python scripts/build_indexes.py
     env:
       CONFIG_NAME: '{{.PHASE}}'
 
-  artifacts:
-    desc: Run full artifact pipeline — ingest, citation graph, indexes
+  indexes:rebuild:
+    desc: "4b. Force-rebuild indexes — deletes existing artifacts first"
     cmds:
-      - task: ingest
-        vars: {PHASE: '{{.PHASE}}'}
+      - cmd: rmdir /s /q "artifacts\indexes\{{.PHASE}}"
+        platforms: [windows]
+        ignore_error: true
+      - cmd: rm -rf "artifacts/indexes/{{.PHASE}}"
+        platforms: [linux, darwin]
+        ignore_error: true
+      - uv run python scripts/build_indexes.py
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
+
+  artifacts:
+    desc: "4. Build all artifacts — citation graph + indexes (run after ingest)"
+    cmds:
       - task: citation-graph
         vars: {PHASE: '{{.PHASE}}'}
       - task: indexes
         vars: {PHASE: '{{.PHASE}}'}
 
-  # ── Run ────────────────────────────────────────────────────────────────────
+  # ── 5. Diagnose (optional, check parser/chunk quality) ────────────────────
+
+  diagnose:
+    desc: "5. Report parser quality — section detection rates across corpus"
+    cmds:
+      - uv run python scripts/diagnose_parser.py
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
+
+  # ── 6. Run (start services first, then api + ui in separate terminals) ─────
 
   api:
-    desc: Start FastAPI on :8000 (CONFIG_NAME={{.PHASE}})
-    deps: [services]
+    desc: "6a. Start FastAPI backend on :8000 (run 'task services' first)"
     cmds:
       - uv run uvicorn api.app:app --host 0.0.0.0 --port 8000
     env:
       CONFIG_NAME: '{{.PHASE}}'
 
+  ui:
+    desc: "6b. Start Streamlit frontend on :8501"
+    cmds:
+      - uv run streamlit run demo/Home.py
+
   demo:
-    desc: Start FastAPI in demo mode — no Ollama needed
+    desc: "6. Start API in DEMO_MODE — no Ollama or live services needed"
     cmds:
       - uv run uvicorn api.app:app --host 0.0.0.0 --port 8000
     env:
       CONFIG_NAME: demo
 
-  ui:
-    desc: Start Streamlit on :8501
-    cmds:
-      - uv run streamlit run demo/Home.py
-
-  # ── Eval ───────────────────────────────────────────────────────────────────
+  # ── 7. Evaluation ──────────────────────────────────────────────────────────
 
   eval:
-    desc: Run all evaluation benchmarks
+    desc: "7. Run all evaluation benchmarks"
     cmds:
       - uv run python src/researchmind/evaluation/embedding_benchmark.py
       - uv run python src/researchmind/evaluation/faiss_benchmark.py
@@ -125,10 +172,12 @@ tasks:
       - uv run python src/researchmind/evaluation/phase4_eval.py
       - uv run python src/researchmind/evaluation/phase5_eval.py
       - uv run python src/researchmind/evaluation/phase6_eval.py
+    env:
+      CONFIG_NAME: '{{.PHASE}}'
 
-  # ── Util ───────────────────────────────────────────────────────────────────
+  # ── 8. Utilities ───────────────────────────────────────────────────────────
 
   clean:
-    desc: Remove __pycache__ dirs and .pyc files
+    desc: "Remove __pycache__ dirs and .pyc files"
     cmds:
       - uv run python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__') if '.venv' not in str(p)]"

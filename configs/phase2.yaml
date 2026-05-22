@@ -26,6 +26,7 @@ ingestion:
 index:
   chunks:        data/processed/cleaned_chunks.jsonl
   artifact_dir:  artifacts/indexes/phase2
+  graph:         artifacts/citation_graph/phase2/citation_graph.pkl
   type:          HNSW32
   vector_backend: faiss
 

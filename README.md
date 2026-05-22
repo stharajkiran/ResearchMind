@@ -100,7 +100,6 @@ Hallucination score (0.80) is cosine similarity between answer embedding and mea
 ## Architecture
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1e293b', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#475569', 'lineColor': '#64748b', 'secondaryColor': '#0f172a', 'tertiaryColor': '#1e3a5f', 'clusterBkg': '#0f172a', 'clusterBorder': '#334155', 'titleColor': '#94a3b8', 'edgeLabelBackground': '#1e293b'}}}%%
 flowchart TD
     classDef source   fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
     classDef ingest   fill:#1e293b,stroke:#475569,color:#e2e8f0
@@ -158,22 +157,31 @@ flowchart TD
 
     Demo["Streamlit - HuggingFace Spaces"]
 
-    arXiv & S2 --> Parser --> Corpus
-    Corpus --> Enc --> FAISS & BM25
-    FAISS & BM25 --> RRF
+    arXiv --> Parser
+    S2 --> Parser
+    Parser --> Corpus
+    Corpus --> Enc
+    Enc --> FAISS
+    Enc --> BM25
+    FAISS --> RRF
+    BM25 --> RRF
 
     RRF --> Router
     Router --> Tools
-    Tools <--> NX
-    Tools <--> Redis
-    Tools <--> Chroma
+    Tools --> NX
+    NX --> Tools
+    Tools --> Redis
+    Redis --> Tools
+    Tools --> Chroma
+    Chroma --> Tools
     Tools --> Synth
     Synth --> V
     V --> API
 
     API --> MCP
     API --> Demo
-    API <--> Redis
+    API --> Redis
+    Redis --> API
     API --> PG
     API --> Prom
     Router --> MLflow
