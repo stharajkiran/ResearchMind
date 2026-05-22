@@ -100,33 +100,44 @@ Hallucination score (0.80) is cosine similarity between answer embedding and mea
 ## Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1e293b', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#475569', 'lineColor': '#64748b', 'secondaryColor': '#0f172a', 'tertiaryColor': '#1e3a5f', 'clusterBkg': '#0f172a', 'clusterBorder': '#334155', 'titleColor': '#94a3b8', 'edgeLabelBackground': '#1e293b'}}}%%
 flowchart TD
+    classDef source   fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+    classDef ingest   fill:#1e293b,stroke:#475569,color:#e2e8f0
+    classDef index    fill:#14532d,stroke:#22c55e,color:#bbf7d0
+    classDef agent    fill:#3b1f5e,stroke:#a855f7,color:#e9d5ff
+    classDef validate fill:#451a03,stroke:#f97316,color:#fed7aa
+    classDef storage  fill:#0c2340,stroke:#0ea5e9,color:#bae6fd
+    classDef obs      fill:#1c1917,stroke:#a78bfa,color:#ddd6fe
+    classDef serving  fill:#052e16,stroke:#16a34a,color:#bbf7d0
+    classDef demo     fill:#292524,stroke:#f59e0b,color:#fde68a
+
     subgraph Sources["Data Sources"]
         arXiv["arXiv API"]
         S2["Semantic Scholar API"]
     end
 
-    subgraph Ingestion["Async Ingestion  ·  Celery + Redis"]
+    subgraph Ingestion["Async Ingestion - Celery + Redis"]
         Parser["PDF Parser + Chunker"]
-        Corpus["papers.jsonl  (DVC-tracked)"]
+        Corpus["papers.jsonl (DVC-tracked)"]
     end
 
     subgraph Index["Search Index"]
         Enc["MPNet Encoder\nall-mpnet-base-v2"]
         FAISS["FAISS HNSW32"]
-        BM25["BM25 Index  (bm25s)"]
+        BM25["BM25 Index (bm25s)"]
         RRF["RRF Fusion"]
     end
 
-    subgraph Agent["LangGraph Agent  ·  LangSmith traced"]
+    subgraph Agent["LangGraph Agent - LangSmith traced"]
         Router["Intent Router\nQwen local"]
-        Tools["search · recent · compare\ncitation · gaps · session memory"]
+        Tools["search / recent / compare\ncitation / gaps / session memory"]
         NX["NetworkX\nCitation Graph"]
         Synth["Synthesise Answer\nClaude Sonnet"]
     end
 
     subgraph Validators["ValidatorPipeline"]
-        V["Citation Grounding → PII Redaction\nHallucination Score → Gap Schema"]
+        V["Citation Grounding\nPII Redaction\nHallucination Score\nGap Schema"]
     end
 
     subgraph Storage["Storage"]
@@ -141,11 +152,11 @@ flowchart TD
     end
 
     subgraph Serving["Serving"]
-        API["FastAPI  /search  /agent"]
-        MCP["MCP Server  (5 tools)"]
+        API["FastAPI\n/search  /agent"]
+        MCP["MCP Server\n5 tools"]
     end
 
-    Demo["Streamlit  ·  HuggingFace Spaces"]
+    Demo["Streamlit - HuggingFace Spaces"]
 
     arXiv & S2 --> Parser --> Corpus
     Corpus --> Enc --> FAISS & BM25
@@ -166,6 +177,16 @@ flowchart TD
     API --> PG
     API --> Prom
     Router --> MLflow
+
+    class arXiv,S2 source
+    class Parser,Corpus ingest
+    class Enc,FAISS,BM25,RRF index
+    class Router,Tools,NX,Synth agent
+    class V validate
+    class Redis,PG,Chroma storage
+    class Prom,MLflow obs
+    class API,MCP serving
+    class Demo demo
 ```
 
 ```
