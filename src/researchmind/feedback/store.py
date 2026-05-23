@@ -12,7 +12,7 @@ from researchmind.metrics import feedback_scores
 class PostgresFeedbackStore(FeedbackStore):
 
     def __init__(self, dsn: str | None = None):
-        self._dsn = dsn or os.environ.get("DATABASE_URL")
+        self._dsn = dsn or os.environ.get("POSTGRES_DSN") or os.environ.get("DATABASE_URL")
 
     def _conn(self):
         return psycopg2.connect(self._dsn)

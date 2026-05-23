@@ -32,6 +32,7 @@ from .agent_utils import (
 import logging
 
 logger = logging.getLogger("agent_tools")
+logger.setLevel(logging.DEBUG)
 
 
 class SubjectList(BaseModel):
@@ -76,9 +77,15 @@ def trace_citation_graph(
     tool_calls_total.labels(tool_name="trace_citation_graph").inc()
     query = state["query"]
     seed_candidates = retriever.search(query, k=10)
+    logger.debug(
+        "trace_citation_graph: %d seed candidates, paper_ids=%s",
+        len(seed_candidates),
+        [c.paper_id for c in seed_candidates],
+    )
     seed_id = next(
         (c.paper_id for c in seed_candidates if graph.has_node(c.paper_id)), None
     )
+    logger.debug("trace_citation_graph: seed_id=%s, graph_nodes=%d", seed_id, graph.number_of_nodes())
     if seed_id is None:
         return {
             "retrieved_chunks": [],
@@ -89,13 +96,17 @@ def trace_citation_graph(
     direction = classify_citation_direction(query, CITATION_DIRECTION_PROMPT, llm)
     # Get all neighbors (both in and out) of the retrieved papers
     if direction == "both":
-        neighbors = get_neighbors(graph, seed_id, "inbound", depth=2) + get_neighbors(
-            graph, seed_id, "outbound", depth=2
+        neighbors = get_neighbors(graph, seed_id, "inbound", depth=2, max_neighbors=20) + get_neighbors(
+            graph, seed_id, "outbound", depth=2, max_neighbors=20
         )
     else:
-        neighbors = get_neighbors(graph, seed_id, direction, depth=2)
+        neighbors = get_neighbors(graph, seed_id, direction, depth=2, max_neighbors=20)
 
-    neighbor_chunks = retriever.get_chunks_for_papers(list(neighbors))
+    # Cap neighbors before encoding — depth=2 on a dense graph can reach 180+ papers.
+    # 25 neighbors × 2 chunks = 50 chunks + 10 seed = 60 total, manageable for synthesis.
+    neighbors = list(dict.fromkeys(neighbors))[:25]
+    neighbor_chunks = retriever.get_relevant_chunks_for_papers(neighbors, query, max_per_paper=2)
+    logger.debug("trace_citation_graph: %d neighbors → %d chunks", len(neighbors), len(neighbor_chunks))
 
     return {
         "retrieved_chunks": neighbor_chunks + seed_candidates,

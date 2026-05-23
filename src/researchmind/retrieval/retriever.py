@@ -28,7 +28,9 @@ class RetrieverService(VectorStore):
         self._encoder = encoder
         self._query_transformer = QueryTransformer()
         self._chunk_dict = self._load_chunk_dict(chunks_path)
-        logger.info("RetrieverService initialised with %d chunks.", len(self._chunk_dict))
+        logger.info(
+            "RetrieverService initialised with %d chunks.", len(self._chunk_dict)
+        )
 
     def _load_chunk_dict(self, chunks_path: Path) -> dict[str, dict]:
         if not chunks_path.exists():
@@ -38,6 +40,9 @@ class RetrieverService(VectorStore):
         with chunks_path.open(encoding="utf-8") as f:
             for line in f:
                 c = json.loads(line)
+                # Normalize to unversioned arXiv ID ("2301.07041v2" → "2301.07041")
+                # so paper_ids match citation graph nodes, which are built without version suffix.
+                c["paper_id"] = c["paper_id"].split("v")[0]
                 chunk_dict.setdefault(c["chunk_id"], c)
         logger.info("Loaded %d chunks from %s.", len(chunk_dict), chunks_path)
         return chunk_dict
@@ -78,12 +83,52 @@ class RetrieverService(VectorStore):
             if chunk_id in self._chunk_dict
         ]
 
-    def get_chunks_for_papers(self, paper_ids: list[str]) -> list[Chunk]:
-        return [
-            Chunk(**c)
-            for c in self._chunk_dict.values()
-            if c["paper_id"] in set(paper_ids)
-        ]
+    def get_chunks_for_papers(
+        self, paper_ids: list[str], max_per_paper: int | None = None
+    ) -> list[Chunk]:
+        """Return chunks for the given paper IDs, optionally capping the number of chunks per paper."""
+        seen: dict[str, list[Chunk]] = {}
+        for c in self._chunk_dict.values():
+            if c["paper_id"] in set(paper_ids):
+                seen.setdefault(c["paper_id"], []).append(Chunk(**c))
+        result = []
+        for pid in paper_ids:
+            result.extend(seen.get(pid, [])[:max_per_paper])
+        return result
+
+    def get_relevant_chunks_for_papers(
+        self,
+        paper_ids: list[str],
+        query: str,
+        max_per_paper: int = 2,
+    ) -> list[Chunk]:
+        """Return the most query-relevant chunks for the given papers.
+
+        Encodes all candidate chunks in one batch (not per-paper) then ranks
+        by cosine similarity within each paper.
+        """
+        paper_id_set = set(paper_ids)
+        q_vec = self._encoder.encode([query], normalize_embeddings=True)  # (1, dim)
+
+        candidates = [c for c in self._chunk_dict.values() if c["paper_id"] in paper_id_set]
+        if not candidates:
+            return []
+
+        chunk_vecs = self._encoder.encode(
+            [c["text"] for c in candidates], normalize_embeddings=True
+        )  # (N, dim)
+        scores = (chunk_vecs @ q_vec.T).ravel()  # (N,) — ravel handles N=1 without scalar
+
+        paper_scored: dict[str, list[tuple[float, dict]]] = {}
+        for score, chunk in zip(scores, candidates):
+            paper_scored.setdefault(chunk["paper_id"], []).append((float(score), chunk))
+
+        result = []
+        for pid in paper_ids:
+            top = sorted(paper_scored.get(pid, []), key=lambda x: -x[0])[:max_per_paper]
+            result.extend(Chunk(**c) for _, c in top)
+        return result
+
 
     # ── Properties used by api/app.py and guardrails ─────────────────────────
 

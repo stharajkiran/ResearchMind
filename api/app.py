@@ -63,18 +63,18 @@ async def lifespan(app: FastAPI):
     configure_api_logging()
     logger.info("API startup")
     logger.info("Loading retriever with phase=%s", phase_config.name)
-    logger.info("Artifact dir: %s", phase_config.artifact_dir)
-    logger.info("Chunks path: %s", phase_config.chunks_path)
+    logger.info("Artifact dir: %s", phase_config.index.artifact_dir)
+    logger.info("Chunks path: %s", phase_config.index.chunks_path)
 
     # Wire up retrieval backends
     encoder = MPNetEncoder()
     dense = FaissIndexBuilder(
         dimension=encoder.dim,
-        artifact_dir=phase_config.artifact_dir,
-        index_type=phase_config.index_type,
+        artifact_dir=phase_config.index.artifact_dir,
+        index_type=phase_config.index.index_type,
     )
     dense.load()
-    sparse = BM25IndexBuilder(artifact_dir=phase_config.artifact_dir)
+    sparse = BM25IndexBuilder(artifact_dir=phase_config.index.artifact_dir)
     sparse.load()
     filtered = ChromaStore(collection_name="researchmind", encoder=encoder)
 
@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
         sparse=sparse,
         filtered=filtered,
         encoder=encoder,
-        chunks_path=phase_config.chunks_path,
+        chunks_path=phase_config.index.chunks_path,
     )
     app.state.paper_metadata = app.state.retriever.lookup_paper_metadata
 
@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     app.state.query_cache = QueryCache(backend=redis_backend)
 
     configure_tracing()
-    citation_graph = load_graph(cfg.index.graph_path)
+    citation_graph = load_graph(phase_config.index.graph_path)
     pipeline = ValidatorPipeline(
         app.state.retriever.corpus_paper_ids, app.state.retriever.encoder
     )

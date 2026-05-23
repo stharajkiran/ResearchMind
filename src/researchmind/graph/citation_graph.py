@@ -1,6 +1,7 @@
 import json
 import logging
 import pickle
+import time
 from pathlib import Path
 
 import networkx as nx
@@ -40,15 +41,17 @@ def build_graph(corpus_ids: list[str], source: CitationSource) -> nx.DiGraph:
         smoothing=0.1,
     ):
         try:
-            reference_ids = source.get_referenced_ids(arxiv_id)
+            reference_ids = source.get_references(arxiv_id)
             if reference_ids is None:
                 logger.warning("No citation data for %s — skipping.", arxiv_id)
                 continue
             # Keep only references that exist in the corpus
             citation_map[arxiv_id] = [
-                ref for ref in reference_ids
+                ref
+                for ref in reference_ids
                 if ref and ref in distinct_corpus and ref != arxiv_id
             ]
+            time.sleep(1.0)  # SS authenticated rate limit: 1 request/second
         except Exception as e:
             logger.error("Failed to fetch citations for %s: %s", arxiv_id, e)
             continue
@@ -78,7 +81,7 @@ def load_graph(path: Path) -> nx.DiGraph:
 
 
 def get_neighbors(
-    graph: nx.DiGraph, paper_id: str, direction: str, depth: int
+    graph: nx.DiGraph, paper_id: str, direction: str, depth: int, max_neighbors: int = 20
 ) -> list[str]:
     """Return neighbouring paper IDs up to `depth` hops away.
 
@@ -87,7 +90,7 @@ def get_neighbors(
         paper_id: arXiv ID of the seed paper.
         direction: "outbound" — papers this paper cites; "inbound" — papers that cite this paper.
         depth: Maximum number of hops.
-
+        max_neighbors: Maximum number of neighbors to return.
     Returns:
         List of neighbouring paper IDs (seed excluded).
     """
@@ -98,13 +101,22 @@ def get_neighbors(
             graph.reverse(), paper_id, cutoff=depth
         )
     else:
-        raise ValueError(f"direction must be 'inbound' or 'outbound', got '{direction}'.")
+        raise ValueError(
+            f"direction must be 'inbound' or 'outbound', got '{direction}'."
+        )
 
-    return [nid for nid in neighbors if nid != paper_id]
+    # exclude seed, sort by hop distance (closer neighbors first), cap
+    sorted_neighbors = sorted(
+        {k: v for k, v in neighbors.items() if k != paper_id}.items(),
+        key=lambda x: x[1]
+    )
+    return [pid for pid, _ in sorted_neighbors[:max_neighbors]]
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
     from researchmind.utils.config import load_phase_config
     from researchmind.ingestion.discovery import SemanticScholarCitationSource
@@ -122,11 +134,22 @@ def main() -> None:
     logger.info("Loaded %d paper IDs from phase=%s", len(arxiv_ids), cfg.name)
 
     graph_path = cfg.index.graph_path
+    if graph_path.exists():
+        logger.info(
+            "Citation graph already exists at %s — skipping. Delete to rebuild.",
+            graph_path,
+        )
+        return
+
     logger.info("Building citation graph → %s", graph_path)
     graph = build_graph(arxiv_ids, source=SemanticScholarCitationSource())
 
     save_graph(graph, graph_path)
-    logger.info("Citation graph saved: %d nodes, %d edges.", graph.number_of_nodes(), graph.number_of_edges())
+    logger.info(
+        "Citation graph saved: %d nodes, %d edges.",
+        graph.number_of_nodes(),
+        graph.number_of_edges(),
+    )
 
 
 if __name__ == "__main__":

@@ -16,4 +16,14 @@ class VectorStore(ABC):
     ) -> list[Chunk]: ...
 
     @abstractmethod
-    def get_chunks_for_papers(self, paper_ids: list[str]) -> list[Chunk]: ...
+    def get_chunks_for_papers(
+        self, paper_ids: list[str], max_per_paper: int | None = None
+    ) -> list[Chunk]: ...
+
+    @abstractmethod
+    def get_relevant_chunks_for_papers(
+        self,
+        paper_ids: list[str],
+        query: str,
+        max_per_paper: int = 2,
+    ) -> list[Chunk]: ...
