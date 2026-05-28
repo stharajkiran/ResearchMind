@@ -294,11 +294,3 @@ uv run locust -f locustfile.py
 
 ---
 
-## Commercial context
-
-This targets the same problem as:
-- **Cypris** — 500M+ data points, enterprise R&D intelligence, $50k+/yr
-- **PatSnap Eureka** — GPT-powered answers grounded in patents and publications
-- **Elicit** — systematic literature review for researchers
-
-The ingestion, retrieval, and serving layers are kept separate intentionally. Swapping to a different domain (patents, legal, financial) requires changing data sources and corpus — not the agent or API.
