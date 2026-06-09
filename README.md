@@ -1,6 +1,6 @@
 # ResearchMind — Self-hosted Research Intelligence for Domain-Specific ML Researchers
 
-A production-grade research assistant that retrieves, reasons over, and synthesises academic literature. Built as a self-hosted alternative to $50k/yr tools like Cypris and Elicit — combining semantic search, citation graph reasoning, and research gap detection to answer questions that Google Scholar cannot.
+A research assistant that retrieves, reasons over, and synthesises academic literature. Built as a self-hosted tool combining semantic search, citation graph reasoning, and research gap detection to answer questions that Google Scholar cannot.
 
 **Demo:** [huggingface.co/spaces/kstha/researchmind](https://huggingface.co/spaces/kstha/researchmind)  
 **Corpus:** 233 OOD/anomaly detection papers (CV domain, 2019–2025)
