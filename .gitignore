@@ -54,3 +54,16 @@ Makefile
 
 .claude
 .dvc
+
+# Local development and analysis state
+.agents/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Generated experiment outputs; retain source scripts, not local result exports
+experiments/locust_results/
+experiments/researchmind_query_results.json
