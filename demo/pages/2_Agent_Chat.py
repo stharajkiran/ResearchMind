@@ -1,3 +1,5 @@
+"""Streamlit interface for cited answers and researcher-review workflows."""
+
 import sys
 from pathlib import Path
 
@@ -6,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import streamlit as st
 import httpx
 import uuid
-from demo.config import BACKEND_URL
+from demo.config import BACKEND_URL, HEADERS
 
 # --- CONFIG ---
 st.set_page_config(page_title="Agent Chat", page_icon="🤖", layout="wide")
@@ -23,7 +25,7 @@ def _detect_type(raw: dict) -> str:
     if "response" in raw:
         return "rag"
     if "gaps" in raw:
-        return "gap"
+        return "limitations"
     if "comparison" in raw:
         return "comparison"
     return "unknown"
@@ -40,7 +42,7 @@ def _fetch_paper_titles(paper_ids: tuple[str, ...]) -> dict[str, str]:
     result: dict[str, str] = {}
     for pid in paper_ids:
         try:
-            r = httpx.get(f"{BACKEND_URL}/paper/{pid}", timeout=3.0)
+            r = httpx.get(f"{BACKEND_URL}/paper/{pid}", headers=HEADERS, timeout=3.0)
             if r.status_code == 200:
                 result[pid] = r.json().get("title", pid)
         except Exception:
@@ -54,7 +56,7 @@ def _all_paper_ids(raw: dict) -> tuple[str, ...]:
     t = _detect_type(raw)
     if t == "rag":
         ids.update(raw.get("sources", []))
-    elif t == "gap":
+    elif t == "limitations":
         for gap in raw.get("gaps", []):
             ids.update(gap.get("supporting_paper_ids", []))
     elif t == "comparison":
@@ -89,7 +91,7 @@ def render_assistant_content(raw_answer: dict | str) -> None:
         if raw_answer.get("confidence") is not None:
             st.caption(f"Confidence: {raw_answer['confidence']:.0%}")
 
-    elif response_type == "gap":
+    elif response_type == "limitations":
         st.caption(f"Topic: {raw_answer.get('topic', 'Unknown')}")
         for gap in raw_answer.get("gaps", []):
             with st.expander(gap["description"][:120], expanded=True):
@@ -129,10 +131,10 @@ if "messages" not in st.session_state:
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("Chat Settings")
-    retrieval_mode = st.selectbox(
-        "Retrieval Mode",
-        options=["standard", "hyde", "rewrite"],
-        help="HyDE generates a hypothetical answer to improve embedding search.",
+    retrieval_mode = "standard"
+    st.caption(
+        "**Supported release mode:** Standard hybrid retrieval. "
+        "Rewrite and HyDE remain local experimental modes."
     )
     st.divider()
     if st.button("🔄 New Session", use_container_width=True):
@@ -180,6 +182,7 @@ for i, msg in enumerate(st.session_state.messages):
                             httpx.post(
                                 f"{BACKEND_URL}/feedback",
                                 json={"feedback_id": feedback_id, "rating": rating},
+                                headers=HEADERS,
                                 timeout=5.0,
                             )
                             st.session_state.messages[i]["rated"] = True
@@ -206,6 +209,7 @@ if user_input := st.chat_input("Ask a research question..."):
                         "session_id": st.session_state.session_id,
                         "retrieval_mode": retrieval_mode,
                     },
+                    headers=HEADERS,
                     timeout=60.0,  # agent involves LLM calls — give it time
                 )
                 response.raise_for_status()

@@ -1,7 +1,6 @@
-import os
-from anthropic import Anthropic
+"""Prompt builders for evidence-grounded ResearchMind responses."""
+
 from dotenv import load_dotenv
-import instructor
 from researchmind.ingestion.models import Chunk
 
 # Load environment variables from .env file
@@ -13,7 +12,7 @@ load_dotenv()
 def build_prompt(query: str, retrieved_chunks: list[Chunk]) -> tuple[str, str]:
     # Create a concise string of ID + Abstract for the prompt
 
-    SYSTEM_PROMPT = f"""
+    SYSTEM_PROMPT = """
                 You are an expert Research Intelligence Agent for ResearchMind. 
                 Your core objective is to synthesize technical answers based EXCLUSIVELY on the provided research paper chunks.
 
@@ -40,6 +39,54 @@ def build_prompt(query: str, retrieved_chunks: list[Chunk]) -> tuple[str, str]:
 
     content = f"Context: {context}\n\nQuery: {query}"
     return SYSTEM_PROMPT, content
+
+
+def build_citation_prompt(
+    query: str,
+    retrieved_chunks: list[Chunk],
+    seed_id: str,
+    neighbor_ids: list[str],
+) -> tuple[str, str]:
+    """Build a prompt constrained to direct citation-graph relationships.
+
+    Args:
+        query: Citation question from the researcher.
+        retrieved_chunks: Chunks from the resolved seed and direct graph neighbors.
+        seed_id: Normalized arXiv ID used as the graph seed.
+        neighbor_ids: Direct graph-neighbor IDs in the requested direction.
+
+    Returns:
+        System and user prompts that prohibit relationships outside ``neighbor_ids``.
+    """
+    neighbor_list = ", ".join(neighbor_ids) if neighbor_ids else "(none)"
+    system_prompt = """
+        You are a citation-graph assistant. Answer only from the supplied direct
+        graph relationships and research chunks.
+
+        Rules:
+        1. The supplied neighbor IDs are the complete allowed relationship set
+           for this response. Do not name any other paper as a direct citer or
+           reference.
+        2. State that relationships are limited to the configured local graph.
+        3. If no neighbor IDs are supplied, state that the local graph contains
+           no direct relationships in the requested direction.
+        4. Use the chunks only to add concise paper context; do not infer edges
+           from textual mentions or outside knowledge.
+    """
+    chunk_texts = "\n\n".join(
+        [
+            f"Paper ID: {chunk.paper_id} | Title: {chunk.title} | "
+            f"Section: {chunk.section} | Content: {chunk.text}"
+            for chunk in retrieved_chunks
+        ]
+    )
+    content = (
+        f"Query: {query}\n"
+        f"Resolved graph seed: {seed_id}\n"
+        f"Allowed direct graph neighbors: {neighbor_list}\n\n"
+        f"GRAPH-BOUNDED RESEARCH CHUNKS:\n---\n{chunk_texts}\n---"
+    )
+    return system_prompt, content
 
 
 def build_comparison_prompt(

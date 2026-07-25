@@ -1,3 +1,5 @@
+"""Build the routed LangGraph workflow for ResearchMind research queries."""
+
 # START → read_session_memory → route → [conditional on intent] → tool → synthesise_answer → END
 #                                                               ↘ detect_research_gaps → END
 
@@ -35,6 +37,20 @@ def build_graph(
     session_memory: SessionMemory,
     query_cache: QueryCache,
 ):
+    """Create the compiled research-query graph with its shared dependencies.
+
+    Args:
+        retriever: Search backend used by every retrieval route.
+        llm: Model client used for routing and answer generation.
+        citation_graph: Directed paper-citation graph for citation queries.
+        pipeline: Output validation pipeline for generated responses.
+        store: Feedback persistence service.
+        session_memory: Session-context storage backend.
+        query_cache: Cache for validated generated answers.
+
+    Returns:
+        A compiled LangGraph application ready to invoke with ``AgentState``.
+    """
     builder = StateGraph(AgentState)
     # add nodes with dependencies bound
     builder.add_node("read_session_memory", partial(read_session_memory, session_memory=session_memory))
@@ -42,7 +58,7 @@ def build_graph(
     builder.add_node("search_corpus", partial(search_corpus, retriever=retriever))
     builder.add_node(
         "search_recent",
-        partial(search_recent, retriever=retriever, recency_decay_rate=0.1),
+        partial(search_recent, retriever=retriever, default_recency_decay_rate=0.1),
     )
     builder.add_node(
         "trace_citation_graph",

@@ -1,3 +1,5 @@
+"""Abstract interface for corpus retrieval services."""
+
 from abc import ABC, abstractmethod
 
 from researchmind.ingestion.models import Chunk
@@ -27,3 +29,9 @@ class VectorStore(ABC):
         query: str,
         max_per_paper: int = 2,
     ) -> list[Chunk]: ...
+
+    @abstractmethod
+    def resolve_paper_id_by_title(
+        self, title: str, author_hint: str | None = None
+    ) -> str | None:
+        """Resolve a unique corpus paper ID from an exact normalized title."""

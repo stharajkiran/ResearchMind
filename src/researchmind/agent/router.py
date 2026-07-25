@@ -1,4 +1,4 @@
-from langsmith import traceable
+from researchmind.agent.tracing import trace
 from researchmind.agent.state import AgentState
 from researchmind.utils.llm_client import ResearchMindLLM
 
@@ -15,7 +15,7 @@ Classify the user's query into exactly one of the following intents:
 - recent: Questions about the latest, newest, or most recent work in an area. Keywords: latest, newest, recent, state-of-the-art, SOTA, newly published
 
 Rules:
-- Return only one of: {', '.join(intent_labels)}. No explanation, no punctuation, no extra words.
+- Return only one of: {", ".join(intent_labels)}. No explanation, no punctuation, no extra words.
 - If unsure, return search.
 
 Examples:
@@ -30,7 +30,7 @@ Examples:
 """
 
 
-@traceable
+@trace
 def route(state: AgentState, llm: ResearchMindLLM) -> dict:
     query = state["query"]
     intent = llm.complete(

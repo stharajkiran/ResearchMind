@@ -66,6 +66,7 @@ class IndexConfig:
     graph_path: Path
     index_type: str
     vector_backend: str
+    min_relevance_score: float | None = None
 
 
 @dataclass
@@ -164,6 +165,7 @@ def load_phase_config(project_root: Path | None = None) -> PhaseConfig:
         graph_path=root / idx_raw["graph"],
         index_type=idx_raw["type"],
         vector_backend=idx_raw["vector_backend"],
+        min_relevance_score=idx_raw.get("min_relevance_score"),
     )
 
     model_raw = raw["model"]

@@ -40,7 +40,7 @@ index:
 model:
   embedding: sentence-transformers/all-mpnet-base-v2
   llm:
-    # Haiku replaces Ollama — no local models needed for demo
+    # DEMO_MODE=true uses these (no Ollama needed)
     fast: { model: "claude-haiku-4-5-20251001", provider: anthropic }
     medium: { model: "claude-haiku-4-5-20251001", provider: anthropic }
     strong: { model: "deepseek-chat", provider: openai }

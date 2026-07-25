@@ -1,27 +1,172 @@
-# ResearchMind — Self-hosted Research Intelligence for Domain-Specific ML Researchers
+# ResearchMind — Configurable Literature Assistant
 
-A research assistant that retrieves, reasons over, and synthesises academic literature. Built as a self-hosted tool combining semantic search, citation graph reasoning, and research gap detection to answer questions that Google Scholar cannot.
+ResearchMind is a configurable literature-assistance project: it retrieves paper evidence, synthesises cited answers, compares methods, and explores available citation relationships. Its ingestion, indexing, retrieval, and serving layers are intentionally separated so that a future corpus can be configured for a different research domain.
 
-**Demo:** [huggingface.co/spaces/kstha/researchmind](https://huggingface.co/spaces/kstha/researchmind)  
-**Corpus:** 233 OOD/anomaly detection papers (CV domain, 2019–2025)
+**Demonstrated domain:** OOD and anomaly-detection literature in computer vision.
+**Supported portfolio release:** the full demonstrated corpus (27,851 indexed chunks), served locally through FastAPI and Streamlit.
+
+> **Release scope:** This is a focused Level 2, single-user portfolio project. ResearchMind does not claim exhaustive coverage, definitive novelty or research-gap discovery, scientific truth, competitor parity, or autonomous research decisions. New domains require their own curated corpus, index build, and evaluation; configurability is a design goal, not a claim that every domain is already validated.
 
 ---
 
-## What makes it novel
+## Supported workflows
+
+When a research corpus has been ingested and indexed, a researcher can use
+ResearchMind to:
+
+1. **Search paper evidence** — retrieve ranked chunks from the configured
+   corpus using hybrid dense and keyword retrieval.
+2. **Ask a cited research question** — receive an agent-generated synthesis
+   with the paper sources used for the answer.
+3. **Compare methods** — request a structured, source-linked comparison of
+   methods or approaches represented in the corpus.
+4. **Explore citation relationships** — follow available inbound or outbound
+   relationships from a retrieved paper in the configured citation graph.
+5. **Review candidate limitations or open questions** — inspect structured,
+   source-linked observations that require the researcher's own judgement.
+
+The portfolio release verifies these workflows using the OOD/anomaly-detection
+corpus. Search results, citations, and open-question outputs are bounded by the
+configured corpus and its available metadata.
+
+---
+
+## Demonstrated configuration and dependencies
+
+The verified portfolio release uses `CONFIG_NAME=full`, which selects the
+following demonstrated case:
+
+| Area | Demonstrated configuration |
+|---|---|
+| Research domain | Computer-vision OOD and anomaly detection |
+| Corpus boundary | `cs.CV` papers discovered with OOD/anomaly-detection queries; configured date range 2018–2025 |
+| Indexed corpus | 27,851 section chunks in `data/processed/full/arxiv_ss2_final_chunks.jsonl` |
+| Retrieval | `all-mpnet-base-v2`, FAISS HNSW32, BM25, and reciprocal-rank fusion |
+| Public search mode | Standard hybrid retrieval. Rewrite and HyDE are local experimental modes and are not exposed in the portfolio demo. |
+| Citation data | A local NetworkX graph in `artifacts/citation_graph/full/citation_graph.pkl` |
+| Agent provider path | `DEMO_MODE=true` selects configured cloud LLM tiers; cited Agent Chat requires `ANTHROPIC_API_KEY` |
+| Streamlit connection | `BACKEND_URL=http://localhost:8000` |
+
+### Artifact availability
+
+The demonstrated corpus, retrieval indexes, and citation-graph artifact are
+present in the development environment but are ignored by Git. They are not
+included in a normal repository clone. A future user must obtain or build these
+artifacts before starting the full demo; the supported artifact/setup path is
+documented in the local-run section below.
+
+### Optional services and keys
+
+- `DATABASE_URL` or `POSTGRES_DSN` enables feedback persistence. When neither
+  is set, the feedback store is inactive.
+- `REDIS_URL` enables caching and session storage. When it is unset, the cache
+  backend is a no-op.
+- `DEEPSEEK_API_KEY` is only needed when using a configured DeepSeek-compatible
+  LLM tier; it is not required by the verified Anthropic-backed demo path.
+- Semantic Scholar, OpenAlex, and AWS credentials are for ingestion or corpus
+  rebuilding, not for searching an already-built local corpus.
+
+No secret belongs in the repository. The embedding model may download on first
+use if it is not already available in the local model cache.
+
+---
+
+## Release verification evidence
+
+| Evidence | Result | What it establishes |
+|---|---:|---|
+| Offline automated test suite | Full suite passed after the final API/UI consistency fixes | `/search` response behavior, request-option propagation, deterministic hybrid retrieval behavior, and graph-bounded citation traversal work without local services or live LLM calls. |
+| Search workflow | Manually verified | The UI returns paper-result cards from the demonstrated corpus. |
+| Cited Agent Chat | Manually verified | The UI returns a response with source details. |
+| Comparison, citation, and limitations workflows | Manually verified | The routed agent returns the expected source-linked workflow outputs. |
+
+This is release verification, not a claim of universal retrieval quality,
+scientific correctness, or production reliability. No release-level benchmark
+score is claimed until it can be rerun against a versioned corpus and evaluation
+set.
+
+## Demo evidence
+
+The following screenshots show the verified portfolio workflows using the
+demonstrated OOD/anomaly-detection corpus.
+
+### Search paper evidence
+
+<img src="images/search-results.png" alt="ResearchMind Search page showing ranked paper-result cards for an anomaly-detection representation-learning query." width="900">
+
+*Hybrid search returns ranked paper cards with the paper title, relevant
+section, and evidence excerpt.*
+
+### Cited Agent Chat
+
+<img src="images/cited-agent-answer.png" alt="ResearchMind Agent Chat showing a cited synthesis and linked source papers." width="900">
+
+*The agent synthesizes retrieved context and exposes the paper sources used for
+researcher review.*
+
+### Method comparison
+
+<img src="images/method-comparison.png" alt="ResearchMind Agent Chat showing a source-linked comparison of two OOD-detection approaches." width="900">
+
+*A comparison request produces method-specific summaries, trade-offs, and
+linked supporting papers.*
+
+### Citation exploration
+
+<img src="images/citation-exploration.png" alt="ResearchMind Agent Chat showing papers that cite a selected paper in the configured local citation graph." width="900">
+
+*Citation exploration reports relationships available in the configured local
+graph; it does not claim coverage beyond that graph.*
+
+### Limitations and open questions
+
+<img src="images/limitations-open-questions.png" alt="ResearchMind Agent Chat showing source-linked candidate limitations and open questions." width="900">
+
+*This workflow surfaces candidate limitations and open questions with supporting
+papers for human review; it does not establish a research gap or scientific
+consensus.*
+
+## Known limitations and failure cases
+
+- **Corpus-bounded evidence:** results are limited to the configured corpus,
+  metadata, and citation graph. Absence of a result does not establish absence
+  from the wider literature.
+- **Unrelated queries:** hybrid retrieval can still return superficially similar
+  evidence for an out-of-domain query. Relevance-threshold calibration is
+  intentionally deferred rather than presented as a finished feature.
+- **LLM synthesis:** cited sources identify the papers used by the agent; they
+  do not independently prove every generated statement. Researchers must read
+  the linked papers before relying on an answer.
+- **Limitations/open questions:** this workflow surfaces candidate observations
+  from retrieved evidence. It cannot establish a research gap, novelty claim,
+  or scientific consensus.
+- **External dependence:** Agent Chat requires a configured LLM provider and
+  can fail, incur cost, or change behavior with that provider. The embedding
+  model may require an initial download.
+- **Release scope:** the verified application is a local, single-user demo.
+  Multi-user access control, operational monitoring, scaling, recovery, and
+  production reliability targets are outside this release.
+- **Artifact distribution:** full-demo artifacts are released separately from
+  source control. The public setup path becomes complete only when the matching
+  GitHub Release asset is uploaded.
+
+---
+
+## Capabilities and experimental work
 
 1. **Multi-source heterogeneous retrieval** — arXiv + Semantic Scholar simultaneously
 2. **Citation graph reasoning** — NetworkX multi-hop traversal, not just similarity
 3. **HyDE benchmarked on its original evaluation domain** — Gao et al. 2022 introduced HyDE on arXiv; we evaluated it there and found it hurts (-15% overall)
 4. **Hybrid BM25 + dense retrieval with RRF** — handles author names, model names, acronyms
 5. **SPECTER2 domain-adapted embedding benchmark** vs all-mpnet, bge-small
-6. **Research gap detection** — structured LLM analysis finding white space (the $50k Cypris use case)
-7. **Feedback-driven index improvement loop** — PostgreSQL → k-means clustering → re-chunking
+6. **Candidate limitations/open-questions exploration** — structured, source-grounded analysis for researcher review; it does not prove a research gap
+7. **Experimental feedback-driven index-improvement loop** — PostgreSQL → k-means clustering → re-chunking
 
 ---
 
-## Benchmarks
+## Historical experimental benchmarks
 
-All results logged to MLflow. Every number has a corresponding run.
+These are historical experimental results, not production reliability claims. Each table must be interpreted with its stated corpus, evaluation set, and method context; the current demonstrated release is the OOD/anomaly-detection case above.
 
 ### Table 1 — Embedding model selection
 
@@ -45,17 +190,17 @@ MPNet leads on semantic recall (0.93) — the primary failure mode in research s
 
 IVF100 recall collapses to 0.58 — at 50 vectors per cluster it sits at the minimum training threshold. HNSW32 matches Flat recall at sub-millisecond latency.
 
-### Table 3 — Retrieval strategy (Phase 3)
+### Table 3 — Retrieval strategy (historical Phase 3)
 
-200-query test set across 5 categories. Standard retrieval is the production baseline.
+200-query test set across 5 categories. Standard retrieval was the selected experimental baseline.
 
-| Mode | Comparative | Factual | Gap Detection | Multi-hop | Temporal | Overall |
+| Mode | Comparative | Factual | Limitations/open questions* | Multi-hop | Temporal | Overall |
 |---|---|---|---|---|---|---|
 | **Standard** | **0.700** | **0.725** | **0.575** | **0.700** | 0.675 | **0.675** |
 | Rewrite | 0.725 | 0.700 | 0.550 | 0.700 | **0.700** | 0.675 |
 | HyDE | 0.650 | 0.650 | 0.350 | 0.625 | 0.575 | 0.570 |
 
-HyDE was expected to give +22% on short ambiguous queries (Gao et al. 2022). Actual result: -15% overall. Gap detection queries ask about unsolved problems; HyDE generates abstracts describing solutions, drifting the embedding in the wrong direction.
+HyDE was expected to give +22% on short ambiguous queries (Gao et al. 2022). Actual result: -15% overall. *The historical evaluation label was `gap_detection`; its published interpretation is limitations/open-questions exploration. These queries ask about unsolved problems, and HyDE can generate solution-like abstracts that drift the embedding.
 
 ### Table 4 — LangGraph agent routing accuracy (Phase 4)
 
@@ -66,25 +211,29 @@ HyDE was expected to give +22% on short ambiguous queries (Gao et al. 2022). Act
 | search | 100% (22/22) |
 | citation | 100% (22/22) |
 | compare | 100% (23/23) |
-| gap_detection | 100% (21/21) |
+| limitations/open questions* | 100% (21/21) |
 | recent | 100% (21/21) |
 | **Overall** | **100% (110/110)** |
 
 ### Table 5 — Validator pipeline (Phase 5)
 
-20-query evaluation (10 search + 10 gap_detection).
+20-query evaluation (10 search + 10 limitations/open-questions queries*).
 
 | Validator | Pass Rate | Avg Score |
 |---|---|---|
 | CitationGroundingValidator | 100% | 1.000 |
 | PIIRedactionValidator | 100% | 1.000 |
 | HallucinationScoreValidator | 100% | 0.799 |
-| ResearchGapSchemaValidator | 100% | 1.000 |
+| Limitations-schema validator* | 100% | 1.000 |
 | **Overall block rate** | **0%** | — |
 
 Hallucination score (0.80) is cosine similarity between answer embedding and mean retrieved chunk embedding. Custom pipeline — no guardrails-ai cloud dependency.
 
-### Phase 6 — Redis cache + Celery + feedback loop
+*These labels are renamed for public documentation. The historical internal
+intent/schema names remain `gap_detection` and `ResearchGap` in the experiment
+code and stored results.
+
+### Experimental Phase 6 — Redis cache + Celery + feedback loop
 
 | Metric | Value |
 |---|---|
@@ -97,7 +246,39 @@ Hallucination score (0.80) is cosine similarity between answer embedding and mea
 
 ---
 
-## Architecture
+## Verified release architecture
+
+The portfolio release uses the following local path. Redis, PostgreSQL,
+observability services, ingestion workers, and MCP are not required to run this
+demonstrated workflow.
+
+```mermaid
+flowchart LR
+    UI["Streamlit UI\nSearch and Agent Chat"] --> API["FastAPI\n/search and /agent"]
+
+    API --> RET["RetrieverService\nHybrid retrieval"]
+    RET --> DENSE["FAISS HNSW32\nDense candidates"]
+    RET --> SPARSE["BM25\nKeyword candidates"]
+    DENSE --> FUSION["RRF fusion\n+ chunk metadata"]
+    SPARSE --> FUSION
+    CHUNKS["Configured chunk corpus\n27,851 OOD/anomaly chunks"] --> RET
+
+    API --> AGENT["LangGraph agent\nRoute and synthesize"]
+    AGENT --> RET
+    AGENT --> GRAPH["Local citation graph\nAvailable relationships only"]
+    AGENT --> LLM["Configured cloud LLM tiers\nAnthropic-backed demo path"]
+    AGENT --> API
+    API --> UI
+```
+
+The diagram intentionally excludes optional services. If configured, Redis adds
+cache/session storage and PostgreSQL adds feedback persistence; neither changes
+the core evidence path above.
+
+### Experimental and post-release architecture
+
+The diagrams below preserve broader experiments and future design directions.
+They are not the architecture claim for the published Level 2 release.
 
 ```mermaid
 flowchart TD
@@ -130,7 +311,7 @@ flowchart TD
 
     subgraph Agent["LangGraph Agent - LangSmith traced"]
         Router["Intent Router\nQwen local"]
-        Tools["search / recent / compare\ncitation / gaps / session memory"]
+        Tools["search / recent / compare\ncitation / limitations exploration / session memory"]
         NX["NetworkX\nCitation Graph"]
         Synth["Synthesise Answer\nClaude Sonnet"]
     end
@@ -215,7 +396,7 @@ arXiv API ─────────────┴── Ingestion Pipeline �
                           ├── search_recent
                           ├── trace_citation_graph (NetworkX)
                           ├── compare_methodologies
-                          ├── detect_research_gaps
+                          ├── limitations/open-questions exploration
                           ├── read_session_memory (Redis)
                           └── synthesise_answer
                                     │
@@ -230,7 +411,7 @@ arXiv API ─────────────┴── Ingestion Pipeline �
 
 ---
 
-## Tech Stack
+## Implemented and experimental components
 
 | Layer | Technology |
 |---|---|
@@ -240,7 +421,7 @@ arXiv API ─────────────┴── Ingestion Pipeline �
 | Citation graph | NetworkX |
 | Agent | LangGraph StateGraph |
 | Agent observability | LangSmith |
-| LLM (synthesis, gaps) | Claude Sonnet (Anthropic) |
+| LLM (synthesis, limitations exploration) | Claude Sonnet (Anthropic) |
 | LLM (routing, rewrite) | Qwen3.5-9B / Qwen3.6-27B (Ollama local) |
 | Validation | Custom pipeline — 4 validators |
 | Evaluation | RAGAS |
@@ -258,7 +439,48 @@ arXiv API ─────────────┴── Ingestion Pipeline �
 
 ---
 
-## How to Run
+## Run the verified local release
+
+The portfolio demo requires the full-corpus artifact bundle in addition to the
+source repository. Obtain the matching GitHub Release asset (or build the
+artifacts yourself), then extract it so these repository-relative paths exist:
+
+- `data/processed/full/arxiv_ss2_final_chunks.jsonl`
+- `artifacts/indexes/full/`
+- `artifacts/citation_graph/full/citation_graph.pkl`
+
+Install the project and create a local environment file:
+
+```powershell
+uv sync
+Copy-Item .env.example .env
+```
+
+In `.env`, set `ANTHROPIC_API_KEY` and retain the verified release settings:
+
+```text
+CONFIG_NAME=full
+DEMO_MODE=true
+BACKEND_URL=http://localhost:8000
+```
+
+Start the API, then start Streamlit in a second terminal:
+
+```powershell
+uv run uvicorn api.app:app --host 127.0.0.1 --port 8000
+uv run streamlit run demo/Home.py
+```
+
+To run the offline portfolio test suite:
+
+```powershell
+uv run pytest -q
+```
+
+The test suite does not require the artifact bundle, database, Redis, or live
+LLM credentials.
+
+## Historical and experimental run commands
 
 ```bash
 git clone https://github.com/stharajkiran/ResearchMind.git
@@ -299,6 +521,3 @@ uv run python src/researchmind/evaluation/phase5_eval.py
 uv run python src/researchmind/evaluation/phase6_eval.py
 uv run locust -f locustfile.py
 ```
-
----
-

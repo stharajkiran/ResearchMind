@@ -1,3 +1,5 @@
+"""FastAPI application for the ResearchMind literature assistant."""
+
 from contextlib import asynccontextmanager
 import logging
 from datetime import datetime
@@ -52,8 +54,10 @@ def configure_api_logging():
     configure_logging_root(_log_path)
 
 
+_demo_mode = os.environ.get("DEMO_MODE", "false").lower() in ("1", "true", "yes")
 client = ResearchMindLLM(
     tiers={tier: (tc.model, tc.provider) for tier, tc in phase_config.model.llm_tiers.items()}
+    if _demo_mode else None
 )
 
 
@@ -84,6 +88,7 @@ async def lifespan(app: FastAPI):
         filtered=filtered,
         encoder=encoder,
         chunks_path=phase_config.index.chunks_path,
+        min_relevance_score=phase_config.index.min_relevance_score,
     )
     app.state.paper_metadata = app.state.retriever.lookup_paper_metadata
 
@@ -133,7 +138,7 @@ def health_check():
 
 
 @app.post("/search")
-def search(req: SearchRequest, request: Request) -> list[Chunk]:
+def search(req: SearchRequest, request: Request) -> list[dict]:
     """Search for relevant chunks given a query.
 
     Args:
@@ -141,19 +146,20 @@ def search(req: SearchRequest, request: Request) -> list[Chunk]:
         request (Request): The FastAPI request object.
 
     Returns:
-        list[Chunk]: A list of chunks matching the search query.
+        list[dict]: Chunk fields plus a normalized ``score`` (0-1) per result,
+            ordered most-relevant first.
     """
     try:
         logger.info("Received search request: %s", req.query)
         retriever = request.app.state.retriever
-        results = retriever.search(
+        scored = retriever.search_scored(
             req.query,
             req.k,
             mode=req.retrieval_mode,
             recency_decay_rate=req.recency_decay,
         )
         logger.info("Search completed successfully for query")
-        return results
+        return [{**chunk.model_dump(), "score": score} for chunk, score in scored]
     except Exception:
         logger.exception("Search failed for query: %s", req.query)
         raise
@@ -212,14 +218,28 @@ def rag(req: RAGRequest, request: Request) -> RAGResponse:
 
 @app.post("/agent")
 def agent(req: RAGRequest, request: Request) -> dict:
+    """Run the routed research agent with the request's retrieval settings.
+
+    Args:
+        req: Validated query, session, and retrieval options from the caller.
+        request: FastAPI request used to access the initialized agent.
+
+    Returns:
+        The agent answer and optional feedback record identifier.
+    """
     result = request.app.state.agent.invoke(
         {
             "query": req.query,
             "intent": "",
             "retrieved_chunks": [],
             "compared_chunks": None,
+            "citation_seed_id": None,
+            "citation_neighbor_ids": [],
+            "citation_resolution_error": None,
             "tool_call_history": [],
-            "session_id": "",
+            "session_id": req.session_id or "",
+            "retrieval_mode": req.retrieval_mode,
+            "recency_decay": req.recency_decay,
             "final_answer": None,
             "feedback_id": None,
         }
@@ -275,6 +295,61 @@ def ingest_status(task_id: str, request: Request) -> dict:
     except Exception:
         logger.exception("Failed to check status for ingestion task ID: %s", task_id)
         return {"status": "error", "message": "Failed to check ingestion status."}
+
+
+@app.get("/stats")
+def stats(request: Request) -> dict:
+    """Aggregate demo metrics for the dashboard: corpus size plus feedback rollups.
+
+    All numbers come from live sources — the retriever's corpus metadata and the
+    Postgres feedback table — so the dashboard never shows fabricated values.
+    Degrades gracefully: if the feedback store has no DSN configured, feedback
+    rollups come back empty rather than raising.
+    """
+    retriever = request.app.state.retriever
+    corpus_size = len(retriever.corpus_paper_ids)
+
+    rows = request.app.state.store.get_all()
+
+    total = len(rows)
+    rated = [r for r in rows if r.get("rating") is not None]
+    rating_counts = {star: 0 for star in range(1, 6)}
+    for r in rated:
+        star = r["rating"]
+        if star in rating_counts:
+            rating_counts[star] += 1
+    avg_rating = (sum(r["rating"] for r in rated) / len(rated)) if rated else None
+
+    intent_counts: dict[str, int] = {}
+    for r in rows:
+        intent = r.get("intent") or "unknown"
+        intent_counts[intent] = intent_counts.get(intent, 0) + 1
+
+    validated = [r for r in rows if r.get("validation_passed") is not None]
+    validation_pass_rate = (
+        sum(1 for r in validated if r["validation_passed"]) / len(validated)
+        if validated
+        else None
+    )
+
+    def _avg(field: str) -> float | None:
+        vals = [r[field] for r in rows if r.get(field) is not None]
+        return (sum(vals) / len(vals)) if vals else None
+
+    return {
+        "corpus_size": corpus_size,
+        "total_queries": total,
+        "rated_count": len(rated),
+        "avg_rating": avg_rating,
+        "rating_distribution": rating_counts,
+        "intent_distribution": intent_counts,
+        "validation_pass_rate": validation_pass_rate,
+        "ragas": {
+            "faithfulness": _avg("ragas_faithfulness"),
+            "context_precision": _avg("ragas_context_precision"),
+            "answer_relevancy": _avg("ragas_answer_relevancy"),
+        },
+    }
 
 
 @app.get("/paper/{paper_id}")
