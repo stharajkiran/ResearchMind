@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from time import time
 import logging
 from datetime import datetime
 from collections import defaultdict

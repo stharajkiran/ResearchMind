@@ -2,7 +2,6 @@ import json
 import logging
 from datetime import datetime
 import numpy as np
-from collections import defaultdict
 from tqdm import tqdm
 import ollama
 

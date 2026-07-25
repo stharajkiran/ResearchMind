@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 
 def find_project_root(sentinel: str = "pyproject.toml") -> Path:

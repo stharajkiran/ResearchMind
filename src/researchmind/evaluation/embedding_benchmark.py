@@ -1,4 +1,3 @@
-from collections import defaultdict
 import json
 from pathlib import Path
 from time import time

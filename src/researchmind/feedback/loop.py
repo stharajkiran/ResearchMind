@@ -50,7 +50,7 @@ class FeedbackLoop:
             # top three queries as sample for LLM to label the cluster
             sample = cluster_queries[:3]
             prompt = (
-                f"These are research queries that got poor ratings. Give a 5-word label describing the topic:\n"
+                "These are research queries that got poor ratings. Give a 5-word label describing the topic:\n"
                 + "\n".join(sample)
             )
             # get the label from the LLM

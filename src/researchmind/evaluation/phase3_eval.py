@@ -10,7 +10,7 @@ import mlflow
 from researchmind.retrieval.retriever import RetrieverService
 from researchmind.evaluation.test_set_generator import TestQuery
 from researchmind.utils.find_root import find_project_root
-from researchmind.utils.logging import configure_logging, configure_logging_root
+from researchmind.utils.logging import configure_logging_root
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -1,13 +1,22 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer
 from adapters import AutoAdapterModel
 from transformers import AutoTokenizer
 
-import torch
-import numpy as np
 
-class BaseResearchEncoder:
-    """Base class for research document encoders. Handles model loading and provides a standardized encode method."""
+class BaseResearchEncoder(ABC):
+    """Abstract base for research document encoders.
+
+    Concrete encoders must expose ``self.dim`` (embedding dimension),
+    ``self.model_name``, and an :meth:`encode` implementation. The default
+    ``__init__`` loads a SentenceTransformer, which the SentenceTransformer-based
+    subclasses (:class:`MPNetEncoder`, :class:`BGEEncoder`) reuse via ``super()``.
+    Subclasses backed by a different runtime (e.g. :class:`SPECTER2Encoder`)
+    override ``__init__`` and satisfy the contract manually.
+    """
 
     def __init__(self, model_name: str):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -16,8 +25,23 @@ class BaseResearchEncoder:
         self.dim = self.model.get_embedding_dimension()
         self.model_name = model_name
 
-    def encode(self, texts: list[str], convert_to_numpy: bool = True, batch_size: int = 32, normalize_embeddings: bool = True) -> np.ndarray:
-        """Standardized encoding method for all child classes."""
+    @abstractmethod
+    def encode(self, texts: list[str], **kwargs) -> np.ndarray:
+        """Encode ``texts`` into an (N, dim) float array."""
+        raise NotImplementedError
+
+
+class SentenceTransformerEncoder(BaseResearchEncoder):
+    """Encoders backed by a SentenceTransformer model share this ``encode``."""
+
+    def encode(
+        self,
+        texts: list[str],
+        convert_to_numpy: bool = True,
+        batch_size: int = 32,
+        normalize_embeddings: bool = True,
+    ) -> np.ndarray:
+        """Standardized encoding method for SentenceTransformer-based encoders."""
         return self.model.encode(
             texts,
             convert_to_numpy=convert_to_numpy,
@@ -27,14 +51,14 @@ class BaseResearchEncoder:
         )
 
 
-class MPNetEncoder(BaseResearchEncoder):
+class MPNetEncoder(SentenceTransformerEncoder):
     """A strong general-purpose encoder that performs well across various research domains."""
 
     def __init__(self):
         super().__init__("sentence-transformers/all-mpnet-base-v2")
 
 
-class BGEEncoder(BaseResearchEncoder):
+class BGEEncoder(SentenceTransformerEncoder):
     """A lightweight and efficient encoder from BAAI, suitable for large-scale applications with limited resources."""
 
     def __init__(self):

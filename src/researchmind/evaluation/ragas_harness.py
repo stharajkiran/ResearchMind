@@ -17,10 +17,8 @@ from ragas.metrics import (
     context_precision,
     context_recall,
 )
-from ragas.llms import llm_factory
 from dotenv import load_dotenv
 from collections import defaultdict
-from anthropic import Anthropic
 from researchmind.utils.find_root import find_project_root
 from langchain_anthropic import ChatAnthropic
 from researchmind.utils.logging import configure_logging

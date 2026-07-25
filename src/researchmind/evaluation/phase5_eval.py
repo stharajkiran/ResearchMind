@@ -111,7 +111,7 @@ def run_eval(agent):
     logger.info("Starting phase5 routing evaluation with %d queries", len(TEST_QUERIES))
 
     mlflow.set_experiment("Phase 5 Evaluation")
-    with mlflow.start_run(run_name=f"phase5_routing_eval"):
+    with mlflow.start_run(run_name="phase5_routing_eval"):
         # Log Hyperparameters
         mlflow.log_params(
             {

@@ -7,24 +7,35 @@ from researchmind.ingestion.models import ResearchGapResponse
 from researchmind.utils.build_prompt import build_gap_prompt
 from researchmind.utils.llm_client import ResearchMindLLM
 from researchmind.retrieval.retriever import RetrieverService
+from researchmind.retrieval.faiss_index import FaissIndexBuilder
+from researchmind.retrieval.bm25_index import BM25IndexBuilder
+from researchmind.retrieval.chroma_store import ChromaStore
+from researchmind.embedding.models import MPNetEncoder
 from researchmind.graph.citation_graph import get_neighbors, load_graph
 
-mcp = FastMCP("ResearchMind")
+mcp = FastMCP("ResearchMind", port=8001)
 
+encoder = MPNetEncoder()
+dense = FaissIndexBuilder(
+    dimension=encoder.dim,
+    artifact_dir=Config.artifact_dir,
+    index_type=Config.index_type,
+)
+dense.load()
+sparse = BM25IndexBuilder(artifact_dir=Config.artifact_dir)
+sparse.load()
+filtered = ChromaStore(collection_name=Config.collection_name, encoder=encoder)
 
-# Load retriever
 retriever = RetrieverService(
-    Config.artifact_dir,
-    collection_name=Config.collection_name,
+    dense=dense,
+    sparse=sparse,
+    filtered=filtered,
+    encoder=encoder,
     chunks_path=Config.chunks_path,
 )
-retriever.load(Config.chunks_path)
 
-
-# Initialize LLM client
 llm = ResearchMindLLM()
-# get the citation graph
-citation_graph = load_graph(Config.project_root / "artifacts" / "citation_graph.pkl")
+citation_graph = load_graph(Config.graph_path)
 
 
 @mcp.tool()
@@ -100,3 +111,7 @@ def ingest_paper(paper_url: str) -> dict:
     # Trigger the asynchronous ingestion task and return the task ID for tracking
     task = ingest_paper_task.delay(paper_url)
     return {"task_id": task.id, "status": "queued"}
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
