@@ -50,9 +50,12 @@ following demonstrated case:
 ### Artifact availability
 
 The demonstrated corpus, retrieval indexes, and citation-graph artifact are
-present in the development environment but are ignored by Git. They are not
-included in a normal repository clone. A future user must obtain or build these
-artifacts before starting the full demo; the supported artifact/setup path is
+ignored by Git and are not included in a normal repository clone. For the
+verified portfolio configuration, download the
+[v0.1.1 artifact bundle](https://github.com/stharajkiran/ResearchMind/releases/download/v0.1.1/researchmind-full-artifacts-v0.1.1.zip)
+and its
+[checksum manifest](https://github.com/stharajkiran/ResearchMind/releases/download/v0.1.1/researchmind-full-artifacts-v0.1.1.manifest.sha256),
+then extract the bundle at the repository root. The supported setup path is
 documented in the local-run section below.
 
 ### Optional services and keys
@@ -147,8 +150,7 @@ consensus.*
   Multi-user access control, operational monitoring, scaling, recovery, and
   production reliability targets are outside this release.
 - **Artifact distribution:** full-demo artifacts are released separately from
-  source control. The public setup path becomes complete only when the matching
-  GitHub Release asset is uploaded.
+  source control in the [v0.1.1 GitHub Release](https://github.com/stharajkiran/ResearchMind/releases/tag/v0.1.1).
 
 ---
 
@@ -442,8 +444,11 @@ arXiv API ─────────────┴── Ingestion Pipeline �
 ## Run the verified local release
 
 The portfolio demo requires the full-corpus artifact bundle in addition to the
-source repository. Obtain the matching GitHub Release asset (or build the
-artifacts yourself), then extract it so these repository-relative paths exist:
+source repository. Download
+[`researchmind-full-artifacts-v0.1.1.zip`](https://github.com/stharajkiran/ResearchMind/releases/download/v0.1.1/researchmind-full-artifacts-v0.1.1.zip)
+from the [v0.1.1 GitHub Release](https://github.com/stharajkiran/ResearchMind/releases/tag/v0.1.1),
+then extract it at the repository root so these repository-relative paths
+exist:
 
 - `data/processed/full/arxiv_ss2_final_chunks.jsonl`
 - `artifacts/indexes/full/`
